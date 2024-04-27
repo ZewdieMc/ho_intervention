@@ -1,0 +1,5 @@
+<launch>    
+    <include file="$(find turtlebot_simulation)/launch/turtlebot_hoi.launch"/>
+    <node pkg="ho_localization" type="localization_node.py" name="localization_node"/>
+    <node pkg="ho_intervention" type="vel_adapter_node.py" name="cmd_vel_adapter"/>    
+</launch>

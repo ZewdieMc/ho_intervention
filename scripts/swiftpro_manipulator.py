@@ -1,5 +1,6 @@
 import numpy as np
 import rospy
+import math
 from sensor_msgs.msg import JointState
 import tf2_ros
 from geometry_msgs.msg import TransformStamped
@@ -42,10 +43,10 @@ class SwiftProManipulator:
     ################################
     def joint_state_callback(self, msg):
         if msg.name[0] == self.joint_state_name:
-            self.q[0] = msg.position[0]
-            self.q[1] = msg.position[1]
-            self.q[2] = msg.position[2]
-            self.q[3] = msg.position[3]
+            self.q[0] = float(msg.position[0])
+            self.q[1] = float(msg.position[1])
+            self.q[2] = float(msg.position[2])
+            self.q[3] = float(msg.position[3])
 
             self.update_kinematics()
 
@@ -119,13 +120,13 @@ class SwiftProManipulator:
         
         q1,q2,q3,q4 = self.q
 
-        l1p = -self.l1*np.sin(q2)
-        l2p = self.l2*np.cos(q3)
+        l1p = -self.l1*math.sin(q2)
+        l2p = self.l2*math.cos(q3)
         A = self.lee + l1p + l2p + self.lb
 
-        J[:,0] = np.array([A * np.sin(q1),                   A * np.cos(q1),               0,                  0, 0, 1 ])# derivertive by q1
-        J[:,1] = np.array([-self.l1*np.cos(q2)*np.cos(q1), -self.l1*np.cos(q2)*np.sin(q1), self.l1*np.sin(q2), 0, 0, 0 ]) # derivertive by q2
-        J[:,2] = np.array([-self.l2*np.sin(q3)*np.cos(q1), -self.l2*np.sin(q3)*np.sin(q1), -self.l2*np.cos(q3), 0, 0, 0 ]) # derivertive by q3
+        J[:,0] = np.array([-A * math.sin(q1),                   A * math.cos(q1),               0,                  0, 0, 1 ])# derivertive by q1
+        J[:,1] = np.array([-self.l1*math.cos(q2)*math.cos(q1), -self.l1*math.cos(q2)*math.sin(q1), self.l1*math.sin(q2), 0, 0, 0 ]) # derivertive by q2
+        J[:,2] = np.array([-self.l2*math.sin(q3)*math.cos(q1), -self.l2*math.sin(q3)*math.sin(q1), -self.l2*math.cos(q3), 0, 0, 0 ]) # derivertive by q3
         J[:,3] = np.array([0, 0, 0, 0, 0, 1 ]) # derivertive by q4
         return J
     
