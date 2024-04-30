@@ -11,7 +11,8 @@ from ho_intervention.srv import PoseGoal, PoseGoalResponse
 from tf.transformations import euler_from_quaternion
 from std_msgs.msg import Bool
 from turtlebot_manipulator import TurtlebotManipulator
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseStamped
+from nav_msgs.msg import Odometry
 
 
 
@@ -41,6 +42,7 @@ class TPController:
 
         # base cmd_vel publisher
         self.base_cmd_vel_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
+        self.ee_pose_pub = rospy.Publisher("~ee_pose", Odometry, queue_size=10)
         # Sevice
         self.sp_mg_srv = rospy.Service('/swiftpro/move_to_goal', PoseGoal, self.handle_swiftpro_move_to_goal)
         
@@ -104,6 +106,9 @@ class TPController:
             # cmd.linear.x = min(max(dq[1], -0.5), 0.5)
             # cmd.angular.z = min(max(dq[0], -0.3), 0.3)
             self.base_cmd_vel_pub.publish(cmd)
+
+            ee_pose = self.robot.getEEPose()
+            self.publishEEpose(ee_pose[:3,0])
             if (rospy.Time.now() - start_time).to_sec() > self.time_limit:
                 res.success = False
                 self.stop_arm()
@@ -131,6 +136,18 @@ class TPController:
         sigma = self.robot.getEEPose()
         #print(np.linalg.norm(sigma - sigma_d))
         return np.linalg.norm(sigma - sigma_d) < 0.004
+    
+    def publishEEpose(self, ee):
+        """
+        Publishes the end-effector pose
+        """
+        ee_pose = Odometry()
+        ee_pose.header.stamp = rospy.Time.now()
+        ee_pose.header.frame_id = "world_ned"
+        ee_pose.pose.pose.position.x = ee[0]
+        ee_pose.pose.pose.position.y = ee[1]
+        ee_pose.pose.pose.position.z = ee[2]
+        self.ee_pose_pub.publish(ee_pose)
 
 if __name__ == '__main__':
 
@@ -138,11 +155,11 @@ if __name__ == '__main__':
     TP = TaskPriority(
             [
 
-                # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 0),
-                JointLimitTask("Joint limit", np.array([-0.5, 2.5]), np.array([-0.5, 0.5]), 1),
-                # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/3, 0.05]), 2),
+                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 0),
+                JointLimitTask("Joint limit", np.array([0.05, 0.05]), np.array([-np.pi/2, 0.05]), 1),
+                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, 0.05]), 2),
                 # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 3),
-                PositionTask("Position", np.array([1.0, 1.0, -0.2]).reshape(-1,1)),
+                PositionTask("Position", np.array([1.0, -2.0, -0.1]).reshape(-1,1)),
             ]
         )
     robot = TPController(TP)

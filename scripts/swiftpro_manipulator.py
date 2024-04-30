@@ -31,9 +31,7 @@ class SwiftProManipulator:
         self.dof = 4
         self.q = np.zeros(self.dof).reshape(-1,1)
         self.update_kinematics()
-
-
-       
+               
 
         # Subscriber
         self.joint_state_sub = rospy.Subscriber("/turtlebot/joint_states", JointState, self.joint_state_callback)
@@ -137,7 +135,7 @@ class SwiftProManipulator:
         ee_position = np.array([self.x_ee, self.y_ee, self.z_ee,0, 0, self.yaw_ee]).reshape(-1,1)
         return ee_position
     
-    '''
+    '''self.T
         Method that returns the position of a selected joint.
         Argument:
         joint (integer): index of the joint

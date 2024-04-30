@@ -105,6 +105,8 @@ class PositionTask(Task):
     def update(self, robot):
         self.err = self.getDesired() - robot.getEEPose()[:3]
         self.J = robot.getEEJacobian()[:3, :]
+        print("J:",self.J)
+        # self.J[:, 0:2] = 0
 
 
 class OrientationTask(Task):
@@ -161,9 +163,9 @@ class JointLimitTask(Task):
         qi = robot.arm.getJointPos(self.joint)
 
         if (self.limit_activation == 0) and (qi >= (self.qi_max - self.alpha)):
-            self.limit_activation = 1
-        elif (self.limit_activation == 0) and (qi <= (self.qi_min + self.alpha)):
             self.limit_activation = -1
+        elif (self.limit_activation == 0) and (qi <= (self.qi_min + self.alpha)):
+            self.limit_activation = 1
         elif (self.limit_activation == -1) and (qi <= (self.qi_max - self.delta)):
             self.limit_activation = 0
         elif (self.limit_activation == 1) and (qi >= (self.qi_min + self.delta)):

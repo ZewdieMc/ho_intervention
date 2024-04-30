@@ -14,8 +14,8 @@ class TaskPriority:
         P = np.eye(robot.dof)
         dq = np.zeros(robot.dof).reshape(-1,1)
         W=np.eye(robot.dof)
-        W[0, 0] = 10
-        W[1, 1] = 10
+        W[0, 0] = 1
+        W[1, 1] = 1
         for i, task in enumerate(self.tasks):
             task.update(robot)
             # if task.name == "Position":
@@ -23,12 +23,11 @@ class TaskPriority:
             self.publish_sigmad(sigmad)
             if task.isActive():
                 J = task.getJacobian()  # Task Jacobian
-
                 Ji_q = J @ P            # Augmented Jacobian
 
                 #compute task velocity
                 print("task.getGain(): ", task.getGain().shape)
-                xi_bar = task.getGain()*0.4 @ task.getError()
+                xi_bar = task.getGain()*0.7 @ task.getError()
                 print("error: ", xi_bar)
                 # print("task name: ", task.name)
 
@@ -44,6 +43,7 @@ class TaskPriority:
                 P = P - np.linalg.pinv(Ji_q) @ J
                 if self.goal_reached(xi_bar):
                     dq = np.zeros(robot.dof).reshape(-1,1)
+        print(dq)
 
         return dq       
     
@@ -60,9 +60,9 @@ class TaskPriority:
         marker.pose.position.x = msg[0]
         marker.pose.position.y = msg[1]
         marker.pose.position.z = msg[2]
-        marker.scale.x = 0.3
-        marker.scale.y = 0.3
-        marker.scale.z = 0.3
+        marker.scale.x = 0.05
+        marker.scale.y = 0.05
+        marker.scale.z = 0.05
         marker.color.g = 1.0
         marker.color.r = 0.0
         marker.color.a = 0.5
