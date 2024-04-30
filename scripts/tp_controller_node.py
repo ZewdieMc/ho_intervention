@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 import rospy
+from task import JointLimitTask, PositionTask
+from task_priority import TaskPriority
 from swiftpro_manipulator import SwiftProManipulator
 import numpy as np
 from utils.kinematics_utils import DLS
@@ -12,11 +14,14 @@ from turtlebot_manipulator import TurtlebotManipulator
 from geometry_msgs.msg import Twist
 
 
+
 def wrap_angle(angle):
     return (angle + ( 2.0 * np.pi * np.floor( ( np.pi - angle ) / ( 2.0 * np.pi ) ) ) )
 class TPController:
 
-    def __init__(self):
+    def __init__(self, TP: TaskPriority):
+
+
         
         
         self.robot = TurtlebotManipulator()
@@ -25,6 +30,11 @@ class TPController:
         self.K = np.eye(6) * 1.3
         self.control_rate = rospy.Rate(10)
         self.time_limit = 50
+
+         # Task Priority
+
+        self.TP = TP
+
 
         # Publisher
         self.joint_vel_pub = rospy.Publisher("/turtlebot/swiftpro/joint_velocity_controller/command", Float64MultiArray, queue_size=10)
@@ -44,15 +54,15 @@ class TPController:
         # Update control
         sigma = self.robot.getEEPose()    # Position of the end-effector
         err =   sigma_d - sigma   # Control error (position error)
-        err[-1] = wrap_angle(err[-1])
+        # err[-1] = wrap_angle(err[-1])
         
         # Control solutionsgle
         W=np.eye(self.robot.dof)
-        W[0, 0] = 10
+        W[0, 0] = 1
         W[1, 1] = 100
         dq = (DLS(J,0.1, W) @ (self.K @ err)).reshape(-1,1)
-        print("-----")
-        # print(dq)
+
+        print(len(dq))
         # publish joint velocity
         dq_msg = Float64MultiArray()
         dq_msg.data = list(dq[2:].flatten())
@@ -81,8 +91,19 @@ class TPController:
         sigma_d = np.array([x, y, z, 0, 0, yaw]).reshape(-1,1)
         start_time = rospy.Time.now()
         while True:
-            self.simple_control_loop(sigma_d)
-            
+            #! self.simple_control_loop(sigma_d)
+            dq = TP.recursive_tp(self.robot)
+            # publish joint velocity
+            dq_msg = Float64MultiArray()
+            dq_msg.data = list(dq[2:].flatten())
+            self.joint_vel_pub.publish(dq_msg)
+
+            cmd = Twist()
+            cmd.linear.x = dq[1]
+            cmd.angular.z = dq[0]
+            # cmd.linear.x = min(max(dq[1], -0.5), 0.5)
+            # cmd.angular.z = min(max(dq[0], -0.3), 0.3)
+            self.base_cmd_vel_pub.publish(cmd)
             if (rospy.Time.now() - start_time).to_sec() > self.time_limit:
                 res.success = False
                 self.stop_arm()
@@ -114,7 +135,19 @@ class TPController:
 if __name__ == '__main__':
 
     rospy.init_node('tp_controller')
-    robot = TPController()
+    TP = TaskPriority(
+            [
+
+                # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 0),
+                JointLimitTask("Joint limit", np.array([-0.5, 2.5]), np.array([-0.5, 0.5]), 1),
+                # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/3, 0.05]), 2),
+                # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 3),
+                PositionTask("Position", np.array([1.0, 1.0, -0.2]).reshape(-1,1)),
+            ]
+        )
+    robot = TPController(TP)
+    
+
     rospy.loginfo("TP Controller node started")
 
     rospy.spin()

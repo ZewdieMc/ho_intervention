@@ -7,7 +7,7 @@ import tf
 from utils.kinematics_utils import *
 from tf.transformations import euler_from_matrix
 
-class TurtlebotManipulator():
+class TurtlebotManipulator:
     
     def __init__(self):
         # 
@@ -42,7 +42,7 @@ class TurtlebotManipulator():
                                                               odom.pose.pose.orientation.y,
                                                               odom.pose.pose.orientation.z,
                                                               odom.pose.pose.orientation.w])
-        self.eta = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y, yaw])
+        self.eta = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z, yaw])
 
         # Mobile base position with respect to the world  
         self.T_WB = compute_transformation(self.eta)
@@ -51,23 +51,55 @@ class TurtlebotManipulator():
         ...
 
     def js_callback(self, msg):
+        self.arm.joint_state_callback(msg)
         ...
 
     def update_kinematics(self):
         ...
 
     def getBaseJacobian(self):
-        Jbase = jacobian(self.T, self.revolute)
+        # Jbase = jacobian(self.T, self.revolute)
+
+        # Compute the partial derivatives of x, y, z with respect to d, theta_robot
+        dx_dd = math.cos(self.eta[3])
+        dy_dd = math.sin(self.eta[3])
+        dz_dd = 0
+        
+        d = self.eta[0]
+        dx_dtheta_r = ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.cos(self.arm.q[0])) * math.cos(self.eta[3]) \
+                    - 0.051 * math.sin(self.eta[3]) - d * math.sin(self.eta[3]) + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.sin(self.arm.q[0])) \
+                    * (-math.sin(self.eta[3]) - math.cos(self.eta[3]))
+        dy_dtheta_r = 0.051 * math.cos(self.eta[3]) + d * math.cos(self.eta[3]) + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.sin(self.arm.q[0])) \
+                    * (math.cos(self.eta[3]) - math.sin(self.eta[3])) \
+                    + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.cos(self.arm.q[0])) \
+                    * (math.sin(self.eta[3]))
+        dz_dtheta_r = 0
+
+        Jbase = np.array([
+            [float(dx_dtheta_r), float(dx_dd)],
+            [float(dy_dtheta_r), float(dy_dd)],
+            [float(dz_dtheta_r), float(dz_dd)],
+            [0, 0],
+            [0, 0],
+            [1, 0]
+        ])
         return Jbase
 
+    '''
+    Get the end-effector Jacobian.
+    '''
     def getEEJacobian(self):
         Jarm = self.arm.getEEJacobian()
-        T = self.T
-        T.append(self.T[-1] @ self.arm.T)
-        Jbase = jacobian(T, self.revolute)
-        J = np.concatenate((Jbase[:,:2], Jarm), axis=1)#! check
+        # T = self.T
+        # T.append(self.T[-1] @ self.arm.T)
+        # Jbase = jacobian(T, self.revolute)
+        Jbase = self.getBaseJacobian()
+        J = np.block([Jbase, Jarm])#! check
         return J
     
+    '''
+    Get the end-effector pose.
+    '''
     def getEEPose(self):
         Tfinal = self.T[-1] @ self.arm.T
         rotation = Tfinal[:3, :3]
@@ -80,4 +112,8 @@ class TurtlebotManipulator():
             rpy[1],
             rpy[2]
         ]).reshape(-1, 1)
+
+    def getDOF(self):
+        return self.dof
+ 
         

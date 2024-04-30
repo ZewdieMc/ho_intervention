@@ -117,9 +117,9 @@ def jacobian(T, revolute):
 def compute_transformation(eta):
             # Mobile base position with respect to the world  
         T = np.array([
-                            [cos(eta[2]) , -sin(eta[2]), 0, eta[0]],
-                            [sin(eta[2]), cos(eta[2]), 0, eta[1]],
-                            [0             ,  0               , 1 , 0],
+                            [cos(eta[3]) , -sin(eta[3]), 0, eta[0]],
+                            [sin(eta[3]), cos(eta[3]), 0, eta[1]],
+                            [0             ,  0               , 1 , eta[2]],
                             [0             ,  0               , 0, 1]
                                                                     ])
         return T

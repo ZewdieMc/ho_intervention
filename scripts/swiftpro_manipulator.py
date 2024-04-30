@@ -136,3 +136,14 @@ class SwiftProManipulator:
         """
         ee_position = np.array([self.x_ee, self.y_ee, self.z_ee,0, 0, self.yaw_ee]).reshape(-1,1)
         return ee_position
+    
+    '''
+        Method that returns the position of a selected joint.
+        Argument:
+        joint (integer): index of the joint
+
+        Returns:
+        (double): position of the joint
+    '''
+    def getJointPos(self, joint):
+        return self.q[joint]
