@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import rospy
-from task import JointLimitTask, PositionTask
+from task import JointLimitTask, PositionTask, ConfigurationTask, OrientationTask, JointPositionTask, BaseOrientationTask
 from task_priority import TaskPriority
 from swiftpro_manipulator import SwiftProManipulator
 import numpy as np
@@ -13,6 +13,7 @@ from std_msgs.msg import Bool
 from turtlebot_manipulator import TurtlebotManipulator
 from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import Odometry
+from ho_intervention.msg import DesiredTask
 
 
 
@@ -21,9 +22,6 @@ def wrap_angle(angle):
 class TPController:
 
     def __init__(self, TP: TaskPriority):
-
-
-        
         
         self.robot = TurtlebotManipulator()
 
@@ -37,6 +35,15 @@ class TPController:
         self.TP = TP
 
 
+        #Available tasks
+        self.available_taks = {
+            "PositionTask": PositionTask("Position", np.array([0.0, 0.0, 0.0]).reshape(-1,1)), 
+            "ConfigurationTask": ConfigurationTask("Configuration", np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]).reshape(-1,1)),
+            "JointPositionTask": JointPositionTask("JointPosition", np.array([0.0]).reshape(-1,1), 0),
+            "BaseOrientationTask": BaseOrientationTask("BaseOrientation", np.array([0.0]).reshape(-1,1)),
+            "OrientationTask": OrientationTask("Orientation", np.array([0.0, 0.0, 0.0]).reshape(-1,1)),
+        }
+
         # Publisher
         self.joint_vel_pub = rospy.Publisher("/turtlebot/swiftpro/joint_velocity_controller/command", Float64MultiArray, queue_size=10)
 
@@ -44,7 +51,7 @@ class TPController:
         self.base_cmd_vel_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         self.ee_pose_pub = rospy.Publisher("~ee_pose", Odometry, queue_size=10)
         # Sevice
-        self.sp_mg_srv = rospy.Service('/swiftpro/move_to_goal', PoseGoal, self.handle_swiftpro_move_to_goal)
+        self.sp_mg_srv = rospy.Subscriber('/desired_tasks', DesiredTask , self.task_handler)
 
         #subscriber
         self.goal_sub = rospy.Subscriber("/goal", PoseStamped, self.stop_arm)
@@ -75,6 +82,35 @@ class TPController:
         cmd.linear.x = dq[1]
         cmd.angular.z = dq[0]
         self.base_cmd_vel_pub.publish(cmd)
+
+    def task_handler(self, msg):
+        self.TP.tasks = self.TP.tasks[:4]
+        desired_msg = msg.desireds
+        for i, task_name in enumerate(msg.tasks):
+            task = self.available_taks[task_name]
+            size = task.getDesired().shape[0]
+            task.joint = msg.joint[i]
+            desired = np.array(desired_msg[0:size]).reshape(-1,1) #! make sure i + size < len(desired_msg)
+            desired_msg = desired_msg[size:]
+            task.setDesired(desired)
+            
+            self.TP.tasks.append(task)
+        print("Tasks:\n", self.TP.tasks)
+        dq = self.TP.recursive_tp(self.robot)
+        # publish joint velocity
+        dq_msg = Float64MultiArray()
+        dq_msg.data = list(dq[2:].flatten())
+        self.joint_vel_pub.publish(dq_msg)
+
+        cmd = Twist()
+        cmd.linear.x = dq[1]
+        cmd.angular.z = dq[0]
+        # cmd.linear.x = min(max(dq[1], -0.5), 0.5)
+        # cmd.angular.z = min(max(dq[0], -0.3), 0.3)
+        self.base_cmd_vel_pub.publish(cmd)
+
+        ee_pose = self.robot.getEEPose()
+        self.publishEEpose(ee_pose[:3,0])
 
 
     def handle_swiftpro_move_to_goal(self,req):
@@ -160,8 +196,7 @@ if __name__ == '__main__':
                 JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 0),
                 JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, 0.05]), 1),
                 JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, 0.05]), 2),
-                # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 3),
-                # PositionTask("Position", np.array([2.0, 1.0, -0.35]).reshape(-1,1)), 
+                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 3),
                 PositionTask("Position", np.array([-2.0, 4.0, -0.25]).reshape(-1,1)),
             ]
         )

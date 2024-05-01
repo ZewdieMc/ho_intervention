@@ -57,31 +57,7 @@ class TurtlebotManipulator:
 
     def getBaseJacobian(self):
         ee_pose = self.getEEPose()[:3].reshape(-1, 1)
-        # Jbase = jacobian(self.T, ee_pose, self.revolute)
-
-        # Compute the partial derivatives of x, y, z with respect to d, theta_robot
-        dx_dd = math.cos(self.eta[3])
-        dy_dd = math.sin(self.eta[3])
-        dz_dd = 0
-        
-        d = self.eta[1]
-        dx_yaw = ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.cos(self.arm.q[0])) * math.cos(self.eta[3]) \
-                    - 0.051 * math.sin(self.eta[3]) - d * math.sin(self.eta[3]) + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.sin(self.arm.q[0])) \
-                    * (-math.sin(self.eta[3]) - math.cos(self.eta[3]))
-        dy_yaw = 0.051 * math.cos(self.eta[3]) + d * math.cos(self.eta[3]) + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.sin(self.arm.q[0])) \
-                    * (math.cos(self.eta[3]) - math.sin(self.eta[3])) \
-                    + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.cos(self.arm.q[0])) \
-                    * (math.sin(self.eta[3]))
-        dz_yaw = 0
-
-        Jbase = np.array([
-            [float(dx_yaw), float(dx_dd)],
-            [float(dy_yaw), float(dy_dd)],
-            [float(dz_yaw), float(dz_dd)],
-            [0, 0],
-            [0, 0],
-            [1, 0]
-        ])
+        Jbase = jacobian(self.T, ee_pose, self.revolute)
         return Jbase
 
     '''

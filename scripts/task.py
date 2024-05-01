@@ -1,5 +1,7 @@
 import numpy as np
 
+def wrap_angle(angle):
+    return (angle + ( 2.0 * np.pi * np.floor( ( np.pi - angle ) / ( 2.0 * np.pi ) ) ) )
 class Task:
     '''
         Constructor.
@@ -14,7 +16,7 @@ class Task:
         self.sigma_d = desired # desired sigma
         self.FF = np.zeros(desired.shape) # feed forward velocity
         self.K = np.eye(desired.shape[0]) # gain matrix
-
+        self.joint = None
         self.is_active = True
     
         '''
@@ -123,6 +125,7 @@ class OrientationTask(Task):
     '''
     def update(self, robot):
         self.err = self.getDesired() - robot.getEEPose()[3:]
+        self.err[-1] = wrap_angle(self.err[-1])
         self.J = robot.getEEJacobian()[3:, :]
 
 class ConfigurationTask(Task):
@@ -138,8 +141,9 @@ class ConfigurationTask(Task):
     Method updating the task variables.
     '''
     def update(self, robot):
-        self.J = np.block([robot.getEEJacobian()[:3, :], robot.getEEJacobian()[-1, :]])
-        self.err = np.concatenate([self.getDesired()[:3] - robot.getEEPose()[:3], self.getDesired()[3] - robot.getEEPose()[-1]])
+        self.J = robot.getEEJacobian()
+        self.err = self.getDesired() - robot.getEEPose()
+        self.err[-1] = wrap_angle(self.err[-1])
 
 class JointLimitTask(Task):
     '''
@@ -178,7 +182,7 @@ class JointLimitTask(Task):
         return True if self.active != 0 else False
     
 
-class JointPosition(Task):
+class JointPositionTask(Task):
     '''
     Subclass of Task, representing a joint position task.
     '''
@@ -190,8 +194,23 @@ class JointPosition(Task):
         """
         Update the task variables
         """
-        self.err = self.getDesired() - robot.arm.getJointPos(self.joint)
+        self.err = (self.getDesired() - robot.arm.getJointPos(self.joint))
         self.J = np.zeros((1, robot.getDOF()))
-        self.J[:, self.joint] = 1
+        self.J[:, self.joint + 2] = 1
+
+class BaseOrientationTask(Task):
+    '''
+    Subclass of Task, representing a joint position task.
+    '''
+    def __init__(self, name, desired) -> None:
+        super().__init__(name, desired)
+    
+    def update(self, robot):
+        """
+        Update the task variables
+        """
+        self.err = np.array([wrap_angle(self.getDesired() - robot.eta[-1])]).reshape(-1,1)
+        self.J = np.zeros((1, robot.getDOF()))
+        self.J[:, 0] = 1
 
     

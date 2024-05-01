@@ -19,14 +19,16 @@ class TaskPriority:
         for i, task in enumerate(self.tasks):
             task.update(robot)
             sigmad = self.tasks[-1].getDesired()
-            self.publish_sigmad(sigmad)
+            print("sigmad: ", sigmad)
+            if task.name == "Configuration" or task.name == "Position":
+                self.publish_sigmad(sigmad)
             if task.isActive():
                 J = task.getJacobian()  # Task Jacobian
                 Ji_q = J @ P            # Augmented Jacobian
 
                 #compute task velocity
                 xi_bar = task.getGain()*0.7 @ task.getError()
-                print("error: ", xi_bar)
+                print("error {} ".format(task.name), xi_bar)
 
                 dq_i = DLS(Ji_q, 0.1 , W) @ (xi_bar - J @ dq)
 
@@ -34,9 +36,9 @@ class TaskPriority:
 
                 # Update null space projector
                 P = P - np.linalg.pinv(Ji_q) @ J
-                if self.goal_reached(xi_bar):
-                    dq = np.zeros(robot.dof).reshape(-1,1)
-
+                # if self.goal_reached(xi_bar):
+                #     dq = np.zeros(robot.dof).reshape(-1,1)
+        print("dq: ", dq)
         return dq       
     
     def goal_reached(self, error):
