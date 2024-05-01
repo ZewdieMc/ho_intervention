@@ -152,7 +152,7 @@ class JointLimitTask(Task):
         self.delta = threshold[1]
         self.qi_min = Qli[0]
         self.qi_max = Qli[1]
-        self.limit_activation = -1
+        self.active = -1
         self.K  = np.eye(1)
         self.err = np.array([1])    
 
@@ -162,20 +162,20 @@ class JointLimitTask(Task):
 
         qi = robot.arm.getJointPos(self.joint)
 
-        if (self.limit_activation == 0) and (qi >= (self.qi_max - self.alpha)):
-            self.limit_activation = -1
-        elif (self.limit_activation == 0) and (qi <= (self.qi_min + self.alpha)):
-            self.limit_activation = 1
-        elif (self.limit_activation == -1) and (qi <= (self.qi_max - self.delta)):
-            self.limit_activation = 0
-        elif (self.limit_activation == 1) and (qi >= (self.qi_min + self.delta)):
-            self.limit_activation = 0
+        if (self.active == 0) and (qi >= (self.qi_max - self.alpha)):
+            self.active = -1
+        elif (self.active == 0) and (qi <= (self.qi_min + self.alpha)):
+            self.active = 1
+        elif (self.active == -1) and (qi <= (self.qi_max - self.delta)):
+            self.active = 0
+        elif (self.active == 1) and (qi >= (self.qi_min + self.delta)):
+            self.active = 0
 
-        self.err[0] = self.limit_activation
-        print("activation:{} joint{} q{} ".format(self.limit_activation, self.joint, qi)) 
+        self.err[0] = self.active
+        print("activation:{} joint{} q{} ".format(self.active, self.joint, qi)) 
 
     def isActive(self):
-        return True if self.limit_activation != 0 else False
+        return True if self.active != 0 else False
     
 
 class JointPosition(Task):

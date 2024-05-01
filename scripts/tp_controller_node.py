@@ -45,6 +45,9 @@ class TPController:
         self.ee_pose_pub = rospy.Publisher("~ee_pose", Odometry, queue_size=10)
         # Sevice
         self.sp_mg_srv = rospy.Service('/swiftpro/move_to_goal', PoseGoal, self.handle_swiftpro_move_to_goal)
+
+        #subscriber
+        self.goal_sub = rospy.Subscriber("/goal", PoseStamped, self.stop_arm)
         
 
     def simple_control_loop(self, sigma_d): 
@@ -60,11 +63,9 @@ class TPController:
         
         # Control solutionsgle
         W=np.eye(self.robot.dof)
-        W[0, 0] = 1
-        W[1, 1] = 100
+        W[0, 0] = 10#! we are not using this weight..DON'T TUNE HERE
+        W[1, 1] = 100#! we are not using this weight..DON'T TUNE HERE
         dq = (DLS(J,0.1, W) @ (self.K @ err)).reshape(-1,1)
-
-        print(len(dq))
         # publish joint velocity
         dq_msg = Float64MultiArray()
         dq_msg.data = list(dq[2:].flatten())
@@ -91,6 +92,8 @@ class TPController:
         res = PoseGoalResponse()
 
         sigma_d = np.array([x, y, z, 0, 0, yaw]).reshape(-1,1)
+        TP.tasks[TP.tasks.index([task for task in TP.tasks if task.name == "Position"][0])].setDesired(sigma_d[:3].reshape(-1,1))
+        task = self.TP.tasks
         start_time = rospy.Time.now()
         while True:
             #! self.simple_control_loop(sigma_d)
@@ -111,7 +114,7 @@ class TPController:
             self.publishEEpose(ee_pose[:3,0])
             if (rospy.Time.now() - start_time).to_sec() > self.time_limit:
                 res.success = False
-                self.stop_arm()
+                # self.stop_arm()
                 return res
             self.control_rate.sleep()
         self.stop_arm()
@@ -154,12 +157,12 @@ if __name__ == '__main__':
     rospy.init_node('tp_controller')
     TP = TaskPriority(
             [
-
                 JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 0),
-                JointLimitTask("Joint limit", np.array([0.05, 0.05]), np.array([-np.pi/2, 0.05]), 1),
+                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, 0.05]), 1),
                 JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, 0.05]), 2),
                 # JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 3),
-                PositionTask("Position", np.array([1.0, -2.0, -0.1]).reshape(-1,1)),
+                # PositionTask("Position", np.array([2.0, 1.0, -0.35]).reshape(-1,1)), 
+                PositionTask("Position", np.array([-2.0, 4.0, -0.25]).reshape(-1,1)),
             ]
         )
     robot = TPController(TP)

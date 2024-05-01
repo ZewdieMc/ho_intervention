@@ -17,7 +17,7 @@ class TurtlebotManipulator:
         self.theta = np.array([-np.pi/2, 0.0])
         self.a = np.array([0.0, 0.0])
         self.alpha = np.array([-np.pi/2, np.pi/2])
-        self.revolute = np.array([True, False, True, False])
+        self.revolute = np.array([True, False])
 
         self.arm = SwiftProManipulator()
         # Vector of base pose (position & orientation)
@@ -48,37 +48,36 @@ class TurtlebotManipulator:
         self.T_WB = compute_transformation(self.eta)
         self.T = kinematics(self.d, self.theta, self.a, self.alpha, self.T_WB)
         
-        ...
 
     def js_callback(self, msg):
         self.arm.joint_state_callback(msg)
-        ...
 
     def update_kinematics(self):
         ...
 
     def getBaseJacobian(self):
-        # Jbase = jacobian(self.T, self.revolute)
+        ee_pose = self.getEEPose()[:3].reshape(-1, 1)
+        # Jbase = jacobian(self.T, ee_pose, self.revolute)
 
         # Compute the partial derivatives of x, y, z with respect to d, theta_robot
         dx_dd = math.cos(self.eta[3])
         dy_dd = math.sin(self.eta[3])
         dz_dd = 0
         
-        d = self.eta[0]
-        dx_dtheta_r = ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.cos(self.arm.q[0])) * math.cos(self.eta[3]) \
+        d = self.eta[1]
+        dx_yaw = ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.cos(self.arm.q[0])) * math.cos(self.eta[3]) \
                     - 0.051 * math.sin(self.eta[3]) - d * math.sin(self.eta[3]) + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.sin(self.arm.q[0])) \
                     * (-math.sin(self.eta[3]) - math.cos(self.eta[3]))
-        dy_dtheta_r = 0.051 * math.cos(self.eta[3]) + d * math.cos(self.eta[3]) + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.sin(self.arm.q[0])) \
+        dy_yaw = 0.051 * math.cos(self.eta[3]) + d * math.cos(self.eta[3]) + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.sin(self.arm.q[0])) \
                     * (math.cos(self.eta[3]) - math.sin(self.eta[3])) \
                     + ((0.0132 - 0.142 * np.sin(self.arm.q[1]) + 0.1588 * np.cos(self.arm.q[2]) + 0.0565) * np.cos(self.arm.q[0])) \
                     * (math.sin(self.eta[3]))
-        dz_dtheta_r = 0
+        dz_yaw = 0
 
         Jbase = np.array([
-            [float(dx_dtheta_r), float(dx_dd)],
-            [float(dy_dtheta_r), float(dy_dd)],
-            [float(dz_dtheta_r), float(dz_dd)],
+            [float(dx_yaw), float(dx_dd)],
+            [float(dy_yaw), float(dy_dd)],
+            [float(dz_yaw), float(dz_dd)],
             [0, 0],
             [0, 0],
             [1, 0]

@@ -81,7 +81,7 @@ def kinematics(d, theta, a, alpha, Tb):
         T.append(T_accumulated)
     return T
 
-def jacobian(T, revolute):
+def jacobian(T,EE_Pos, revolute):
     '''
         Function builds a Jacobian for the end-effector of a robot,
         described by a list of kinematic transformations and a list of joint types.
@@ -95,7 +95,7 @@ def jacobian(T, revolute):
     '''
     # 1. Initialize J and O.
     J = np.zeros((6, len(T)-1)) # Empty Jacobian (6 x N) where N - number of joints
-    O = T[-1][:3, -1]# End-effector position    
+    O = EE_Pos.flatten()# End-effector position    
     # 2. For each joint of the robot[1.11747103 0.47111084 0.        ]
     for i in range(len(T) - 1):
         # a. Extract z and o.

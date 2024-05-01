@@ -46,7 +46,7 @@ class SwiftProManipulator:
             self.q[2] = float(msg.position[2])
             self.q[3] = float(msg.position[3])
 
-            self.update_kinematics()
+            return self.update_kinematics()
 
     ################################
     ### Class Functions
@@ -84,6 +84,8 @@ class SwiftProManipulator:
             transform.transform.rotation.z = quaternion[2]
             transform.transform.rotation.w = quaternion[3]
             self.tf_broadcaster.sendTransform(transform)
+
+        return self.T
 
 
     def publish_static_tf(self):
