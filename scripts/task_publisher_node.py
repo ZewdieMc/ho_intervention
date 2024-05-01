@@ -24,6 +24,7 @@ class TaskPublisher:
     def __init__(self):
         self.current_task = None 
         self.current_desired = None 
+        self.current_joint = None 
         
 
         
@@ -46,6 +47,7 @@ class TaskPublisher:
                                 [0.0, 0.0, -0.3],
                                 [-0.25, -0.3, -0.25]
                             ]
+        self.joint_list = [[0],[0],[0],[0],[0],[0],[0],[0],[0],[0]]
 
         self.control_interval  = 0.1
         # Publishers
@@ -62,12 +64,14 @@ class TaskPublisher:
             task_msg = DesiredTask()
             task_msg.tasks = self.current_task
             task_msg.desireds = self.current_desired
+            task_msg.joint = self.current_joint
             self.task_pub.publish(task_msg)
             
     def test_loop(self, _): 
         if self.tasks_list:
             self.current_task = self.tasks_list.pop(0)
             self.current_desired = self.desireds_list.pop(0)
+            self.current_joint = self.joints_list.pop(0)
             print(self.current_task)
             print(self.current_desired)
 
