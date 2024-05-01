@@ -31,23 +31,23 @@ class TaskPublisher:
             # "PositionTask": PositionTask("Position", np.array([0.0, 0.0, 0.0]).reshape(-1,1)), 
             # "ConfigurationTask": ConfigurationTask("Configuration", np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1,1)),
             # "JointPositionTask": JointPositionTask("JointPosition", np.array([0.0]).reshape(-1,1)),
-            # "BaseOrientationTask": BaseOrientationTask("BaseOrientation", np.array([0.0]).reshape(-1,1)),
+            # "BaseOrientationTask": Bnp.pi/4,aseOrientationTask("BaseOrientation", np.array([0.0]).reshape(-1,1)),
             # "OrientationTask": OrientationTask("Orientation", np.array([0.0]).reshape(-1,1)),
         #For testing
-        self.tasks_list = [["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"]]
+        self.tasks_list = [["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"],["JointPositionTask","PositionTask"]]
         self.desireds_list = [
-                                [1.2, -0.5, -0.3],
-                                [-0.8, 0.7, -0.2],
-                                [-0.1, -0.1, -0.4],
-                                [0.05, 0.05, -0.25],
-                                [0.0, 0.0, -0.3],
-                                [0.1, 0.1, -0.2],
-                                [-0.1, -0.1, -0.4],
-                                [0.05, 0.05, -0.25],
-                                [0.0, 0.0, -0.3],
-                                [-0.25, -0.3, -0.25]
+                                [np.pi/4,1.2, -0.5, -0.3],
+                                [np.pi/4,-0.8, 0.7, -0.2],
+                                [np.pi/4,-0.1, -0.1, -0.4],
+                                [np.pi/4,0.05, 0.05, -0.25],
+                                [np.pi/4,0.0, 0.0, -0.3],
+                                [np.pi/4,0.1, 0.1, -0.2],
+                                [np.pi/4,-0.1, -0.1, -0.4],
+                                [np.pi/4,0.05, 0.05, -0.25],
+                                [np.pi/4,0.0, 0.0, -0.3],
+                                [np.pi/4,-0.25, -0.3, -0.25]
                             ]
-        self.joint_list = [[0],[0],[0],[0],[0],[0],[0],[0],[0],[0]]
+        self.joint_list = [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]]
 
         self.control_interval  = 0.1
         # Publishers
@@ -71,7 +71,7 @@ class TaskPublisher:
         if self.tasks_list:
             self.current_task = self.tasks_list.pop(0)
             self.current_desired = self.desireds_list.pop(0)
-            self.current_joint = self.joints_list.pop(0)
+            self.current_joint = self.joint_list.pop(0)
             print(self.current_task)
             print(self.current_desired)
 
