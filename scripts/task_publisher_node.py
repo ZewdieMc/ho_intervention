@@ -26,53 +26,63 @@ class TaskPublisher:
         self.current_desired = None 
         self.current_joint = None 
         
-
-        
-        # "PositionTask": PositionTask("Position", np.array([0.0, 0.0, 0.0]).reshape(-1,1)), 
-        # "ConfigurationTask": ConfigurationTask("Configuration", np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1,1)),
-        # "JointPositionTask": JointPositionTask("JointPosition", np.array([0.0]).reshape(-1,1)),
-        # "BaseOrientationTask": Bnp.pi/4,aseOrientationTask("BaseOrientation", np.array([0.0]).reshape(-1,1)),
-        # "OrientationTask": OrientationTask("Orientation", np.array([0.0]).reshape(-1,1)),
-        #For testing
-        self.tasks_list = [["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
-                           ["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
-                           ["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
-                           ["JointPositionTask","ConfigurationTask"]]
-        self.desireds_list = [
-                                [-np.pi/4,1.2, -0.5, -0.3, 0.0,0.0,np.pi/4], 
-                                [-np.pi/4,-0.8, 0.7, -0.2, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,-0.1, -0.1, -0.4, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,0.05, 0.05, -0.25, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,0.0, 0.0, -0.3, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,0.1, 0.1, -0.2, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,-0.1, -0.1, -0.4, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,0.05, 0.05, -0.25, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,0.0, 0.0, -0.3, 0.0,0.0,np.pi/4],
-                                [-np.pi/4,-0.25, -0.3, -0.25, 0.0,0.0,np.pi/4]
-                            ]
-        self.joint_list = [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]]
-
-
-        self.tasks_list = [["ConfigurationTask"],["ConfigurationTask"],["ConfigurationTask"],
-                           ["ConfigurationTask"],["ConfigurationTask"],["ConfigurationTask"],
-                           ["ConfigurationTask"],["ConfigurationTask"],["ConfigurationTask"],
-                           ["ConfigurationTask"]]
         self.control_interval  = 0.1
+        #! Test Position task
+        self.tasks_list = [["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],
+                           ["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"]]
         self.desireds_list = [
-                                [1.2, -0.5, -0.3, 0.0,0.0,np.pi/2], 
-                                [-0.8, 0.7, -0.2, 0.0,0.0,np.pi/2],
-                                [-0.1, -0.1, -0.4, 0.0,0.0,np.pi/2],
-                                [0.05, 0.05, -0.25, 0.0,0.0,np.pi/2],
-                                [0.0, 0.0, -0.3, 0.0,0.0,np.pi/2],
-                                [0.1, 0.1, -0.2, 0.0,0.0,np.pi/2],
-                                [-0.1, -0.1, -0.4, 0.0,0.0,np.pi/2],
-                                [0.05, 0.05, -0.25, 0.0,0.0,np.pi/2],
-                                [0.0, 0.0, -0.3, 0.0,0.0,np.pi/2],
-                                [-0.25, -0.3, -0.25, 0.0,0.0,np.pi/2]
+                                [1.2, -0.5, -0.3],
+                                [-0.8, 0.7, -0.2],
+                                [-0.1, -0.1, -0.4],
+                                [0.05, 0.05, -0.25],
+                                [0.0, 0.0, -0.3],
+                                [0.1, 0.1, -0.2],
+                                [-0.1, -0.1, -0.4],
+                                [0.05, 0.05, -0.25],
+                                [0.0, 0.0, -0.3],
+                                [-0.25, -0.3, -0.25]
                             ]
         self.joint_list = [[0],[0],[0],[0],[0],[0],[0],[0],[0],[0]]
+    
+        #! Test JointPosition task and Configuration task
+        # self.tasks_list = [["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
+        #                    ["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
+        #                    ["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
+        #                    ["JointPositionTask","ConfigurationTask"]]
+        # self.desireds_list = [
+        #                         [-np.pi/4,1.2, -0.5, -0.3, 0.0,0.0,np.pi/4], 
+        #                         [-np.pi/4,-0.8, 0.7, -0.2, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,-0.1, -0.1, -0.4, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,0.05, 0.05, -0.25, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,0.0, 0.0, -0.3, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,0.1, 0.1, -0.2, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,-0.1, -0.1, -0.4, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,0.05, 0.05, -0.25, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,0.0, 0.0, -0.3, 0.0,0.0,np.pi/4],
+        #                         [-np.pi/4,-0.25, -0.3, -0.25, 0.0,0.0,np.pi/4]
+        #                     ]
+        # self.joint_list = [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]]
 
+        #! Test Configuration task
+        # self.tasks_list = [["ConfigurationTask"],["ConfigurationTask"],["ConfigurationTask"],
+        #                    ["ConfigurationTask"],["ConfigurationTask"],["ConfigurationTask"],
+        #                    ["ConfigurationTask"],["ConfigurationTask"],["ConfigurationTask"],
+        #                    ["ConfigurationTask"]]
+        # self.desireds_list = [
+        #                         [1.2, -0.5, -0.3, 0.0,0.0,0.0], 
+        #                         [-0.8, 0.7, -0.2, 0.0,0.0,0.0],
+        #                         [-0.1, -0.1, -0.4, 0.0,0.0,0.0],
+        #                         [0.05, 0.05, -0.25, 0.0,0.0,0.0],
+        #                         [0.0, 0.0, -0.3, 0.0,0.0,0.0],
+        #                         [0.1, 0.1, -0.2, 0.0,0.0,0.0],
+        #                         [-0.1, -0.1, -0.4, 0.0,0.0,0.0],
+        #                         [0.05, 0.05, -0.25, 0.0,0.0,0.0],
+        #                         [0.0, 0.0, -0.3, 0.0,0.0,0.0],
+        #                         [-0.25, -0.3, -0.25, 0.0,0.0,0.0]
+        #                     ]
+        # self.joint_list = [[0],[0],[0],[0],[0],[0],[0],[0],[0],[0]]
 
+        # #! Test Orientation task
         # self.tasks_list = [["OrientationTask","PositionTask"],["OrientationTask","PositionTask"],["OrientationTask","PositionTask"],
         #                    ["OrientationTask","PositionTask"],["OrientationTask","PositionTask"],["OrientationTask","PositionTask"],
         #                    ["OrientationTask","PositionTask"],["OrientationTask","PositionTask"],["OrientationTask","PositionTask"],
@@ -91,6 +101,7 @@ class TaskPublisher:
         #                     ]
         # self.joint_list = [[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]]
         
+        # #! Test BaseOrientation task
         # self.tasks_list = [["BaseOrientationTask","PositionTask"],["BaseOrientationTask","PositionTask"],["BaseOrientationTask","PositionTask"],
         #                    ["BaseOrientationTask","PositionTask"],["BaseOrientationTask","PositionTask"],["BaseOrientationTask","PositionTask"],
         #                    ["BaseOrientationTask","PositionTask"],["BaseOrientationTask","PositionTask"],["BsaseOrientationTask","PositionTask"],

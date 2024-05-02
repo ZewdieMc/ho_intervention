@@ -193,10 +193,10 @@ if __name__ == '__main__':
     rospy.init_node('tp_controller')
     TP = TaskPriority(
             [
-                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 0),
-                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, 0.05]), 1),
-                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, 0.05]), 2),
-                JointLimitTask("Joint limit", np.array([0.05, 0.09]), np.array([-np.pi/2, np.pi/2]), 3),
+                JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2, np.pi/2]), 0),
+                JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2, 0.05]), 1),
+                JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2, 0.05]), 2),
+                JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2, np.pi/2]), 3),
                 PositionTask("Position", np.array([-2.0, 4.0, -0.25]).reshape(-1,1)),
             ]
         )
