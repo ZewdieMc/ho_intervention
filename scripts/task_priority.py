@@ -9,7 +9,7 @@ class TaskPriority:
     def __init__(self, tasks) -> None:
         self.tasks = tasks
         self.sigmad_pub = rospy.Publisher('sigmad_marker', Marker, queue_size=10)
-
+        self.joint_vel_limits = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5]).reshape(-1,1)
     def recursive_tp(self, robot):
         P = np.eye(robot.dof)
         dq = np.zeros(robot.dof).reshape(-1,1)
@@ -20,7 +20,7 @@ class TaskPriority:
             task.update(robot)
             sigmad = self.tasks[-1].getDesired()
             print("sigmad: ", sigmad)
-            if task.name == "Configuration" or task.name == "Position":
+            if task.name == "Configuration" or task.name == "Position" or task.name == "ArmOnly":
                 self.publish_sigmad(sigmad)
             if task.isActive():
                 J = task.getJacobian()  # Task Jacobian
@@ -36,11 +36,20 @@ class TaskPriority:
 
                 # Update null space projector
                 P = P - np.linalg.pinv(Ji_q) @ J
-                # if self.goal_reached(xi_bar):
-                #     dq = np.zeros(robot.dof).reshape(-1,1)
-        print("dq: ", dq)
+
+        print("dq before: ", dq)
+        dq = self.velocity_scaling(dq)
+        print("dq after: ", dq)
         return dq       
     
+    def velocity_scaling(self, dq):
+        s = max(np.abs(dq[2:]) / self.joint_vel_limits[2:])
+        if s > 1:
+            dq[2:] =  (dq[2:]) / float(s)
+            return dq
+        else:
+            return dq
+
     def goal_reached(self, error):
         return np.linalg.norm(error) < 0.01
 

@@ -214,3 +214,36 @@ class BaseOrientationTask(Task):
         self.J[:, 0] = 1
 
     
+#! Use Planning to go to the aruco box
+class BasePositionTask(Task):
+    '''
+    Subclass of Task, representing mobile base position task.
+    '''
+    def __init__(self, name, desired) -> None:
+        super().__init__(name, desired)
+    
+    def update(self, robot):
+        """
+        Update the task variables
+        """
+        print("desired:", self.getDesired())
+        print("eta:", robot.eta.reshape(-1, 1))
+        self.err = (self.getDesired() - robot.eta.reshape(-1, 1))
+        self.J = robot.getEEJacobian()
+        self.J[:, 2:] = 0
+        #concatenate the first three rows and last row
+
+class ArmOnlyPositionTask(Task):
+    '''
+    Subclass of Task, representing an arm only task.
+    '''
+    def __init__(self, name, desired) -> None:
+        super().__init__(name, desired)
+    
+    def update(self, robot):
+        """
+        Update the task variables
+        """
+        self.err = (self.getDesired() - robot.getEEPose())
+        self.J = robot.getEEJacobian()
+        self.J[:, :2] = 0

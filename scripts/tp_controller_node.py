@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import rospy
-from task import JointLimitTask, PositionTask, ConfigurationTask, OrientationTask, JointPositionTask, BaseOrientationTask
+from task import JointLimitTask, PositionTask, ConfigurationTask, OrientationTask, JointPositionTask, BaseOrientationTask, ArmOnlyPositionTask, BasePositionTask
 from task_priority import TaskPriority
 from swiftpro_manipulator import SwiftProManipulator
 import numpy as np
@@ -42,6 +42,8 @@ class TPController:
             "JointPositionTask": JointPositionTask("JointPosition", np.array([0.0]).reshape(-1,1), 0),
             "BaseOrientationTask": BaseOrientationTask("BaseOrientation", np.array([0.0]).reshape(-1,1)),
             "OrientationTask": OrientationTask("Orientation", np.array([0.0, 0.0, 0.0]).reshape(-1,1)),
+            "ArmOnlyTaskPositionTask": ArmOnlyPositionTask("ArmOnly", np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]).reshape(-1,1)),
+            "BaseOnlyPositionTask": BasePositionTask("BaseOnly", np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1,1)),
         }
 
         # Publisher
@@ -86,6 +88,7 @@ class TPController:
     def task_handler(self, msg):
         self.TP.tasks = self.TP.tasks[:4]
         desired_msg = msg.desireds
+        
         for i, task_name in enumerate(msg.tasks):
             task = self.available_taks[task_name]
             size = task.getDesired().shape[0]

@@ -21,7 +21,7 @@ class TurtlebotManipulator:
 
         self.arm = SwiftProManipulator()
         # Vector of base pose (position & orientation)
-        self.eta = np.zeros((3, 1))
+        self.eta = np.zeros((4, 1))
 
         # Base transformation wrt world
         self.T_WB = np.eye(4)
