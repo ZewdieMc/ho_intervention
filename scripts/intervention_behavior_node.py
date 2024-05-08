@@ -46,7 +46,7 @@ class setGoal (py_trees.behaviour.Behaviour):
         pickup_goal = PoseStamped()
         pickup_goal.pose.position.x = 2.0
         pickup_goal.pose.position.y = 0.0
-        pickup_goal.pose.position.z = -0.14
+        pickup_goal.pose.position.z = -0.12
 
         q = quaternion_from_euler(0,0,1.65)
         pickup_goal.pose.orientation.x = q[0]
