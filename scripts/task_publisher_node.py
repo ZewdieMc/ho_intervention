@@ -13,8 +13,9 @@ from std_msgs.msg import Bool
 from turtlebot_manipulator import TurtlebotManipulator
 from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import Odometry
-from ho_intervention.msg import DesiredTask
-
+from ho_intervention.msg import DesiredTask, MoveJointAction, MoveToGoalAction
+import actionlib
+import tf
 
 
 def wrap_angle(angle):
@@ -25,8 +26,9 @@ class TaskPublisher:
         self.current_task = None 
         self.current_desired = None 
         self.current_joint = None 
-        
+        self.active = False 
         self.control_interval  = 0.1
+        self.ee_pose = [0,0,0,0,0,0]
         #! Test Position task
         self.tasks_list = [["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],
                            ["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"]]
@@ -126,21 +128,43 @@ class TaskPublisher:
         
         self.current_desired = self.desireds_list.pop(0)
         self.current_joint = self.joint_list.pop(0)
+        # Subscribers
+        rospy.Subscriber('/tp_controller/ee_pose', Odometry, self.ee_pose_cb)
         # Publishers
         self.task_pub = rospy.Publisher("/desired_tasks", DesiredTask, queue_size= 10)
+
+        # action
+        self.move_turtlebot_server = actionlib.SimpleActionServer('move_turtlebot', MoveToGoalAction, self.move_turtlebot, False)
+        self.move_turtlebot_server.start()
+        self.move_swiftpro_server = actionlib.SimpleActionServer('move_swiftpro', MoveToGoalAction, self.move_swiftpro, False)
+        self.move_swiftpro_server.start()
+        # self.move_kobuki_server = actionlib.SimpleActionServer('move_kobuki', FollowPathAction, self.move_kobuki, False)
+        # self.move_kobuki_server.start()
+        self.move_joint_server = actionlib.SimpleActionServer('move_kobuki', MoveJointAction, self.move_joint, False)
+        self.move_joint_server.start()
 
         # Timer
         rospy.Timer(rospy.Duration(self.control_interval), self.task_publish_loop)
 
         # For testing 
-        rospy.Timer(rospy.Duration(10), self.test_loop)
+        # rospy.Timer(rospy.Duration(10), self.test_loop)
+
+    def ee_pose_cb(self, msg):
+        x,y,z,roll,pitch,yaw = self.extract_pose(msg.pose.pose)
+        self.ee_pose = [x,y,z,roll,pitch,yaw]
 
     def task_publish_loop(self, _): 
-        if self.current_task:
+        if self.active and self.current_task:
             task_msg = DesiredTask()
             task_msg.tasks = self.current_task
             task_msg.desireds = self.current_desired
             task_msg.joint = self.current_joint
+            self.task_pub.publish(task_msg)
+        else:
+            task_msg = DesiredTask()
+            task_msg.tasks = []
+            task_msg.desireds = []
+            task_msg.joint = []
             self.task_pub.publish(task_msg)
             
     def test_loop(self, _): 
@@ -151,7 +175,136 @@ class TaskPublisher:
             print(self.current_task)
             print(self.current_desired)
 
-   
+
+    ####################################
+    ### Behaviors functions
+    ####################################
+    def move_turtlebot(self,goal):
+        """
+        Service to move turtlebot to the goal with configuation tasks
+        """
+        start_time = rospy.Time.now()
+        # Change goal to current task
+        x,y,z,roll,pitch,yaw = self.extract_pose(goal.goal.pose)
+        self.current_task = ["ConfigurationTask"]
+        self.current_desired = [x, y, z, roll, pitch, yaw]
+        print(self.current_desired)
+        self.current_joint = [0]
+
+        # Activate publisher
+        self.active = True
+        success = True
+
+        # Keep checking the progress
+        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.02 and not rospy.is_shutdown():
+            print(np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
+
+            if self.move_turtlebot_server.is_preempt_requested() :
+                rospy.logerr('Preemptted!!')
+                self.move_turtlebot_server.set_preempted()
+                self.active = False
+                success = False
+                break
+
+            if rospy.Time.now() - start_time > rospy.Duration(20):
+                rospy.logerr('Time Exceed!!')
+                self.move_turtlebot_server.set_preempted()
+                self.active = False
+                success = False
+                break
+            
+            rospy.sleep(0.1)
+        rospy.logerr('Move turtlebot -- Success')
+        if success == True:
+            self.active = False
+            self.move_turtlebot_server.set_succeeded()
+
+    def move_swiftpro(self,goal):
+        """
+        Service to move turtlebot to the goal with configuation tasks
+        """
+        start_time = rospy.Time.now()
+        # Change goal to current task
+        x,y,z,roll,pitch,yaw = self.extract_pose(goal.goal.pose)
+        self.current_task = ["ArmOnlyTaskPositionTask"]
+        self.current_desired = [x, y, z, roll, pitch, yaw]
+        print(self.current_desired)
+        self.current_joint = [0]
+
+        # Activate publisher
+        self.active = True
+        success = True
+        rospy.loginfo('Recive Action Move swiftpro')
+        # Keep checking the progress
+        print(np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
+        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.02  and not rospy.is_shutdown():
+
+            if self.move_swiftpro_server.is_preempt_requested() :
+                rospy.logerr('Preemptted!!')
+                self.move_swiftpro_server.set_preempted()
+                self.active = False
+                success = False
+                break
+
+            if rospy.Time.now() - start_time > rospy.Duration(20):
+                rospy.logerr('Time Exceed!!')
+                self.move_swiftpro_server.set_preempted()
+                self.active = False
+                success = False
+                break
+            
+            rospy.sleep(0.1)
+        rospy.logerr('Move swiftpro -- Success')
+        if success == True:
+            self.active = False
+            self.move_swiftpro_server.set_succeeded()
+
+    def move_joint(self,goal):
+        """
+        Service to move turtlebot to the goal with configuation tasks
+        """
+        start_time = rospy.Time.now()
+        # Change goal to current task
+        self.current_task = ["JointPositionTask"]
+        self.current_desired = [goal.position]
+        self.current_joint = [goal.joint]
+
+        # Activate publisher
+        self.active = True
+        success = True
+
+        # Keep checking the progress
+        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.05 and not rospy.is_shutdown():
+
+            if self.move_swiftpro_server.is_preempt_requested() :
+                rospy.logerr('Preemptted!!')
+                self.move_swiftpro_server.set_preempted()
+                self.active = False
+                success = False
+                break
+
+            if start_time - rospy.Time.now() > rospy.Duration(20):
+                rospy.logerr('Time Exceed!!')
+                self.move_swiftpro_server.set_preempted()
+                self.active = False
+                success = False
+                break
+            
+            rospy.sleep(0.1)
+            
+        if success == True:
+            self.active = False
+            self.move_swiftpro_server.set_succeeded()
+
+    def extract_pose(self,pose):
+        x= pose.position.x
+        y= pose.position.y
+        z= pose.position.z
+        q = [pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w]
+        roll,pitch,yaw = euler_from_quaternion(q)
+
+        return x, y, z, roll, pitch, yaw
+    
 
 if __name__ == '__main__':
 
