@@ -44,6 +44,8 @@ class TaskPriority:
     
     def velocity_scaling(self, dq):
         s = max(np.abs(dq[2:]) / self.joint_vel_limits[2:])
+        dq[0] = max(min(dq[0], 1), -1)
+        dq[1] = max(min(dq[1], 0.3), -0.3)
         if s > 1:
             dq[2:] =  (dq[2:]) / float(s)
             return dq
