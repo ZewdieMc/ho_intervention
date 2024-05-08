@@ -14,6 +14,7 @@ from turtlebot_manipulator import TurtlebotManipulator
 from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import Odometry
 from ho_intervention.msg import DesiredTask
+import tf
 
 
 
@@ -88,7 +89,7 @@ class TPController:
     def task_handler(self, msg):
         self.TP.tasks = self.TP.tasks[:4]
         desired_msg = msg.desireds
-        
+
         for i, task_name in enumerate(msg.tasks):
             task = self.available_taks[task_name]
             size = task.getDesired().shape[0]
@@ -150,7 +151,7 @@ class TPController:
             self.base_cmd_vel_pub.publish(cmd)
 
             ee_pose = self.robot.getEEPose()
-            self.publishEEpose(ee_pose[:3,0])
+            self.publishEEpose(ee_pose)
             if (rospy.Time.now() - start_time).to_sec() > self.time_limit:
                 res.success = False
                 # self.stop_arm()
@@ -189,6 +190,12 @@ class TPController:
         ee_pose.pose.pose.position.x = ee[0]
         ee_pose.pose.pose.position.y = ee[1]
         ee_pose.pose.pose.position.z = ee[2]
+        
+        q = tf.transformations.quaternion_from_euler(0, 0, ee[5])
+        ee_pose.pose.pose.orientation.x = q[0]
+        ee_pose.pose.pose.orientation.y = q[1]
+        ee_pose.pose.pose.orientation.z = q[2]
+        ee_pose.pose.pose.orientation.w = q[3]
         self.ee_pose_pub.publish(ee_pose)
 
 if __name__ == '__main__':
