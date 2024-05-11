@@ -4,7 +4,7 @@ import py_trees
 import rospy
 from geometry_msgs.msg import PoseStamped
 import actionlib
-from ho_intervention.msg import MoveJointAction, MoveToGoalAction, MoveToGoalActionGoal,MoveJointActionGoal
+from ho_intervention.msg import MoveJointAction, MoveToGoalAction, MoveToGoalActionGoal,MoveJointActionGoal, MoveJointGoal
 import time
 from tf.transformations import quaternion_from_euler
 from std_srvs.srv import SetBool
@@ -278,6 +278,45 @@ class EnableSuction (py_trees.behaviour.Behaviour):
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
             return False
+        
+class DisableSuction (py_trees.behaviour.Behaviour):
+    # this one only moves the base of the robot. no arm behavior here.
+    def __init__(self, name):
+        super(DisableSuction, self).__init__(name)
+        self.blackboard = self.attach_blackboard_client(name=self.name)
+        self.blackboard.register_key("goal", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("goal", access=py_trees.common.Access.READ)
+
+        self.blackboard.register_key("pickup_goal", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("pickup_goal", access=py_trees.common.Access.READ)
+
+    def setup(self):
+        self.logger.debug("  %s [DisableSuction::setup()]" % self.name)
+        
+
+    def initialise(self):
+        self.logger.debug("  %s [DisableSuction::initialise()]" % self.name)
+
+    def update(self):
+        succes = self.disable_suction()
+        if succes:
+            return py_trees.common.Status.SUCCESS
+        else:
+            return py_trees.common.Status.FAILURE
+        
+    def disable_suction(self):
+        rospy.logwarn("Calling disable suction")
+        rospy.wait_for_service('/turtlebot/swiftpro/vacuum_gripper/set_pump')
+        path = []
+        try:
+            enable_suction = rospy.ServiceProxy('/turtlebot/swiftpro/vacuum_gripper/set_pump', SetBool)
+            resp = enable_suction(False)
+            
+            return resp.success
+        
+        except rospy.ServiceException as e:
+            print(f"Service call failed: {e}")
+            return False
 
 
 class PlaceBox (py_trees.behaviour.Behaviour):
@@ -304,9 +343,9 @@ class PlaceBox (py_trees.behaviour.Behaviour):
        print(self.client.get_state())
        if self.client.get_state() == actionlib.GoalStatus.PENDING or self.client.get_state() == actionlib.GoalStatus.LOST:
             rospy.loginfo('Send goal to place box')
-            goal = MoveJointActionGoal()
-            goal.joint = 0
-            goal.position = -1.5
+            goal = MoveJointGoal()
+            goal.joint = [0]
+            goal.position =  [-1.45]
             self.client.send_goal(goal)
             self.goal_sent = True
        if self.client.get_state() == actionlib.GoalStatus.PREEMPTED:
@@ -317,6 +356,9 @@ class PlaceBox (py_trees.behaviour.Behaviour):
         rospy.loginfo('Place box Success')
         self.goal_sent = False
         return py_trees.common.Status.SUCCESS
+       else:
+        rospy.loginfo('Place box working...')
+        return py_trees.common.Status.RUNNING
  
  
     # def place_box(self):
@@ -345,12 +387,13 @@ if __name__ == "__main__":
     move_down = moveSwiftpro("move_down")
     enable_suction = EnableSuction("grab_box")
     move_up = moveTurtlebot("move_up")
-    place_box = PlaceBox("place_box")
+    move_place_box = PlaceBox("move_to_place_box")
+    place_box = DisableSuction("place_box")
 
 
     # go to pickup spot sequence
     go_to_seq = py_trees.composites.Sequence(name="pick_seq", memory=True)
-    go_to_seq.add_children([set_goal,move_base, move_offset, move_down,enable_suction,move_up, place_box])
+    go_to_seq.add_children([set_goal,move_base, move_offset, move_down,enable_suction,move_up, move_place_box, place_box])
     # retry_pickup = py_trees.decorators.Retry(name="retry_pickup",child=go_to_seq, num_failures=6)
 
     # pick_place_seq = py_trees.composites.Sequence(name="Pick and Place Object", memory=True)
@@ -368,6 +411,6 @@ if __name__ == "__main__":
     py_trees.display.ascii_tree(go_to_seq)
 
     time.sleep(1)    
-    while not rospy.is_shutdown():
+    while go_to_seq.status != py_trees.common.Status.SUCCESS and not rospy.is_shutdown():
         go_to_seq.tick_once() # untill the root return sth.
         time.sleep(1)

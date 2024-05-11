@@ -10,6 +10,7 @@ from std_msgs.msg import Float64MultiArray
 from ho_intervention.srv import PoseGoal, PoseGoalResponse
 from tf.transformations import euler_from_quaternion
 from std_msgs.msg import Bool
+from sensor_msgs.msg import JointState
 from turtlebot_manipulator import TurtlebotManipulator
 from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import Odometry
@@ -131,6 +132,7 @@ class TaskPublisher:
         # Subscribers
         rospy.Subscriber('/tp_controller/ee_pose', Odometry, self.ee_pose_cb)
         rospy.Subscriber('/odom', Odometry, self.odom_cb)
+        rospy.Subscriber('/turtlebot/joint_states', JointState, self.js_cb)
 
         # Publishers
         self.task_pub = rospy.Publisher("/desired_tasks", DesiredTask, queue_size= 10)
@@ -158,6 +160,10 @@ class TaskPublisher:
         # For testing 
         # rospy.Timer(rospy.Duration(10), self.test_loop)
 
+
+    def js_cb(self, msg):
+        if msg.name[0] == 'turtlebot/swiftpro/joint1':
+            self.q = msg.position
 
     def odom_cb(self, odom):
         _, _, yaw = tf.transformations.euler_from_quaternion([odom.pose.pose.orientation.x, 
@@ -255,7 +261,7 @@ class TaskPublisher:
         # Keep checking the progress
         print(np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
         while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.02  and not rospy.is_shutdown():
-
+            print("Arm task dist: ", np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
             if self.move_swiftpro_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
                 self.move_swiftpro_server.set_preempted()
@@ -283,16 +289,16 @@ class TaskPublisher:
         start_time = rospy.Time.now()
         # Change goal to current task
         self.current_task = ["JointPositionTask"]
-        self.current_desired = [goal.position]
-        self.current_joint = [goal.joint]
+        self.current_desired = goal.position
+        self.current_joint = goal.joint
 
         # Activate publisher
         self.active = True
         success = True
 
         # Keep checking the progress
-        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.05 and not rospy.is_shutdown():
-
+        while not np.linalg.norm(np.array(self.q[0]) - np.array(self.current_desired)) < 0.045 and not rospy.is_shutdown():
+            print("joint task err: ", np.linalg.norm(np.array(self.q[0]) - np.array(self.current_desired)))
             if self.move_joint_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
                 self.move_joint_server.set_preempted()
@@ -300,7 +306,7 @@ class TaskPublisher:
                 success = False
                 break
 
-            if start_time - rospy.Time.now() > rospy.Duration(20):
+            if start_time - rospy.Time.now() > rospy.Duration(10):
                 rospy.logerr('Time Exceed!!')
                 self.move_joint_server.set_preempted()
                 self.active = False
