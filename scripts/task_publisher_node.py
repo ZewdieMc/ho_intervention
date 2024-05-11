@@ -138,6 +138,7 @@ class TaskPublisher:
         # action
         self.move_turtlebot_server = actionlib.SimpleActionServer('move_turtlebot', MoveToGoalAction, self.move_turtlebot, False)
         self.move_turtlebot_server.start()
+
         self.move_swiftpro_server = actionlib.SimpleActionServer('move_swiftpro', MoveToGoalAction, self.move_swiftpro, False)
         self.move_swiftpro_server.start()
         # self.move_kobuki_server = actionlib.SimpleActionServer('move_kobuki', FollowPathAction, self.move_kobuki, False)
@@ -148,6 +149,8 @@ class TaskPublisher:
 
         self.move_joint_server = actionlib.SimpleActionServer('move_kobuki', MoveJointAction, self.move_joint, False)
         self.move_joint_server.start()
+
+
 
         # Timer
         rospy.Timer(rospy.Duration(self.control_interval), self.task_publish_loop)
@@ -290,16 +293,16 @@ class TaskPublisher:
         # Keep checking the progress
         while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.05 and not rospy.is_shutdown():
 
-            if self.move_swiftpro_server.is_preempt_requested() :
+            if self.move_joint_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
-                self.move_swiftpro_server.set_preempted()
+                self.move_joint_server.set_preempted()
                 self.active = False
                 success = False
                 break
 
             if start_time - rospy.Time.now() > rospy.Duration(20):
                 rospy.logerr('Time Exceed!!')
-                self.move_swiftpro_server.set_preempted()
+                self.move_joint_server.set_preempted()
                 self.active = False
                 success = False
                 break
@@ -308,7 +311,7 @@ class TaskPublisher:
             
         if success == True:
             self.active = False
-            self.move_swiftpro_server.set_succeeded()
+            self.move_joint_server.set_succeeded()
 
     def extract_pose(self,pose):
         x= pose.position.x
@@ -336,7 +339,7 @@ class TaskPublisher:
         success = True
 
         # Keep checking the progress
-        while not np.linalg.norm(np.array(self.eta) - np.array(self.current_desired)) < 0.02 and not rospy.is_shutdown():
+        while not np.linalg.norm(np.array(self.eta) - np.array(self.current_desired)) < 0.07 and not rospy.is_shutdown():
             print("move base dist: ", np.linalg.norm(np.array(self.eta) - np.array(self.current_desired)))
             print("current: ", self.eta)
             print("desired: ", self.current_desired)
