@@ -200,7 +200,7 @@ class JointPositionTask(Task):
 
 class BaseOrientationTask(Task):
     '''
-    Subclass of Task, representing a joint position task.
+    Subclass of Task, Orientation of the base
     '''
     def __init__(self, name, desired) -> None:
         super().__init__(name, desired)
@@ -215,7 +215,7 @@ class BaseOrientationTask(Task):
 
     
 #! Use Planning to go to the aruco box
-class BasePositionTask(Task):
+class BaseConfigurationTask(Task):
     '''
     Subclass of Task, representing mobile base position task.
     '''
@@ -229,9 +229,11 @@ class BasePositionTask(Task):
         print("desired:", self.getDesired())
         print("eta:", robot.eta.reshape(-1, 1))
         self.err = (self.getDesired() - robot.eta.reshape(-1, 1))
-        self.J = robot.getEEJacobian()
-        self.J[:, 2:] = 0
-        #concatenate the first three rows and last row
+        self.err[-1] = wrap_angle(self.err[-1])
+        self.J = robot.getBaseOnlyJacobian()
+        self.J = np.block([[self.J[:3, :]], [self.J[-1, :]]])
+        print("JBaseOnly:\n", self.J)
+        
 
 class ArmOnlyPositionTask(Task):
     '''

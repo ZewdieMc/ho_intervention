@@ -55,19 +55,28 @@ class TurtlebotManipulator:
     def update_kinematics(self):
         ...
 
+    '''
+    Computes the part of the whole kinematic chain Jacobian that corresponds to the base.
+    '''
     def getBaseJacobian(self):
         ee_pose = self.getEEPose()[:3].reshape(-1, 1)
         Jbase = jacobian(self.T, ee_pose, self.revolute)
         return Jbase
-
+    
+    '''
+    Computes the jacobian based on the kinematic chain upto the base.
+    '''
+    def getBaseOnlyJacobian(self):
+        # Jbase = jacobianBaseOnly(self.T, self.revolute) #!* 100
+        Jbase = self.getBaseJacobian() 
+        Jarm = np.zeros((6,4))
+        J = np.block([Jbase, Jarm])
+        return J
     '''
     Get the end-effector Jacobian.
     '''
     def getEEJacobian(self):
         Jarm = self.getArmJacobian()
-        # T = self.T
-        # T.append(self.T[-1] @ self.arm.T)
-        # Jbase = jacobian(T, self.revolute)
         Jbase = self.getBaseJacobian()
         J = np.block([Jbase, Jarm])#! check
         return J

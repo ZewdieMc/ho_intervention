@@ -29,22 +29,22 @@ class TaskPublisher:
         self.active = False 
         self.control_interval  = 0.1
         self.ee_pose = [0,0,0,0,0,0]
+        self.eta = [0,0,0,0]
         #! Test Position task
-        self.tasks_list = [["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],
-                           ["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"],["PositionTask"]]
+        self.tasks_list = [["BaseOnlyPositionTask"]]
         self.desireds_list = [
-                                [1.2, -0.5, -0.3],
-                                [-0.8, 0.7, -0.2],
-                                [-0.1, -0.1, -0.4],
-                                [0.05, 0.05, -0.25],
-                                [0.0, 0.0, -0.3],
-                                [0.1, 0.1, -0.2],
-                                [-0.1, -0.1, -0.4],
-                                [0.05, 0.05, -0.25],
-                                [0.0, 0.0, -0.3],
-                                [-0.25, -0.3, -0.25]
+                                [1.7, -0.12, -0.3, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
+                                # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
                             ]
-        self.joint_list = [[0],[0],[0],[0],[0],[0],[0],[0],[0],[0]]
+        self.joint_list = [[0, 0]]
     
         #! Test JointPosition task and Configuration task
         # self.tasks_list = [["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
@@ -130,6 +130,8 @@ class TaskPublisher:
         self.current_joint = self.joint_list.pop(0)
         # Subscribers
         rospy.Subscriber('/tp_controller/ee_pose', Odometry, self.ee_pose_cb)
+        rospy.Subscriber('/odom', Odometry, self.odom_cb)
+
         # Publishers
         self.task_pub = rospy.Publisher("/desired_tasks", DesiredTask, queue_size= 10)
 
@@ -140,6 +142,10 @@ class TaskPublisher:
         self.move_swiftpro_server.start()
         # self.move_kobuki_server = actionlib.SimpleActionServer('move_kobuki', FollowPathAction, self.move_kobuki, False)
         # self.move_kobuki_server.start()
+
+        self.move_base_server = actionlib.SimpleActionServer('move_base', MoveToGoalAction, self.move_base, False)
+        self.move_base_server.start()
+
         self.move_joint_server = actionlib.SimpleActionServer('move_kobuki', MoveJointAction, self.move_joint, False)
         self.move_joint_server.start()
 
@@ -148,6 +154,14 @@ class TaskPublisher:
 
         # For testing 
         # rospy.Timer(rospy.Duration(10), self.test_loop)
+
+
+    def odom_cb(self, odom):
+        _, _, yaw = tf.transformations.euler_from_quaternion([odom.pose.pose.orientation.x, 
+                                                              odom.pose.pose.orientation.y,
+                                                              odom.pose.pose.orientation.z,
+                                                              odom.pose.pose.orientation.w])
+        self.eta = np.array([odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z, yaw])
 
     def ee_pose_cb(self, msg):
         x,y,z,roll,pitch,yaw = self.extract_pose(msg.pose.pose)
@@ -176,9 +190,9 @@ class TaskPublisher:
             print(self.current_desired)
 
 
-    ####################################
-    ### Behaviors functions
-    ####################################
+    ##########################################
+    ### Behaviors functions / Action callbacks
+    ##########################################
     def move_turtlebot(self,goal):
         """
         Service to move turtlebot to the goal with configuation tasks
@@ -197,7 +211,7 @@ class TaskPublisher:
 
         # Keep checking the progress
         while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.02 and not rospy.is_shutdown():
-            print(np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
+            print("configuration goal dist: ", np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
 
             if self.move_turtlebot_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
@@ -304,6 +318,48 @@ class TaskPublisher:
         roll,pitch,yaw = euler_from_quaternion(q)
 
         return x, y, z, roll, pitch, yaw
+    
+    def move_base(self,goal):
+        """
+        Service to move turtlebot to the goal with configuation tasks
+        """
+        start_time = rospy.Time.now()
+        # Change goal to current task
+        x,y,z,roll,pitch,yaw = self.extract_pose(goal.goal.pose)
+        self.current_task = ["BaseOnlyPositionTask"]
+        self.current_desired = [x, y, z, yaw]
+        print(self.current_desired)
+        self.current_joint = [0]
+
+        # Activate publisher
+        self.active = True
+        success = True
+
+        # Keep checking the progress
+        while not np.linalg.norm(np.array(self.eta) - np.array(self.current_desired)) < 0.02 and not rospy.is_shutdown():
+            print("move base dist: ", np.linalg.norm(np.array(self.eta) - np.array(self.current_desired)))
+            print("current: ", self.eta)
+            print("desired: ", self.current_desired)
+
+            if self.move_base_server.is_preempt_requested() :
+                rospy.logerr('Preemptted!!')
+                self.move_base_server.set_preempted()
+                self.active = False
+                success = False
+                break
+
+            if rospy.Time.now() - start_time > rospy.Duration(20):
+                rospy.logerr('Time Exceed!!')
+                self.move_base_server.set_preempted()
+                self.active = False
+                success = False
+                break
+            
+            rospy.sleep(0.1)
+        rospy.logerr('Move base -- Success')
+        if success == True:
+            self.active = False
+            self.move_base_server.set_succeeded()
     
 
 if __name__ == '__main__':

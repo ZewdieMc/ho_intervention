@@ -11,6 +11,7 @@ class TaskPriority:
         self.sigmad_pub = rospy.Publisher('sigmad_marker', Marker, queue_size=10)
         self.joint_vel_limits = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5]).reshape(-1,1)
     def recursive_tp(self, robot):
+        print("number of tasks: ", len(self.tasks))
         P = np.eye(robot.dof)
         dq = np.zeros(robot.dof).reshape(-1,1)
         W=np.eye(robot.dof)
@@ -19,8 +20,8 @@ class TaskPriority:
         for i, task in enumerate(self.tasks):
             task.update(robot)
             sigmad = self.tasks[-1].getDesired()
-            print("sigmad: ", sigmad)
-            if task.name == "Configuration" or task.name == "Position" or task.name == "ArmOnly":
+            print("sigmad: {}".format(task.name), sigmad)
+            if task.name == "Configuration" or task.name == "Position" or task.name == "ArmOnly" or task.name == "BaseOnly":
                 self.publish_sigmad(sigmad)
             if task.isActive():
                 J = task.getJacobian()  # Task Jacobian

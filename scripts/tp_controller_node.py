@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import rospy
-from task import JointLimitTask, PositionTask, ConfigurationTask, OrientationTask, JointPositionTask, BaseOrientationTask, ArmOnlyPositionTask, BasePositionTask
+from task import JointLimitTask, PositionTask, ConfigurationTask, OrientationTask, JointPositionTask, BaseOrientationTask, ArmOnlyPositionTask, BaseConfigurationTask
 from task_priority import TaskPriority
 from swiftpro_manipulator import SwiftProManipulator
 import numpy as np
@@ -44,7 +44,7 @@ class TPController:
             "BaseOrientationTask": BaseOrientationTask("BaseOrientation", np.array([0.0]).reshape(-1,1)),
             "OrientationTask": OrientationTask("Orientation", np.array([0.0, 0.0, 0.0]).reshape(-1,1)),
             "ArmOnlyTaskPositionTask": ArmOnlyPositionTask("ArmOnly", np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]).reshape(-1,1)),
-            "BaseOnlyPositionTask": BasePositionTask("BaseOnly", np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1,1)),
+            "BaseOnlyPositionTask": BaseConfigurationTask("BaseOnly", np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1,1)),
         }
 
         # Publisher
@@ -96,12 +96,11 @@ class TPController:
             task = self.available_taks[task_name]
             size = task.getDesired().shape[0]
             task.joint = msg.joint[i]
-            desired = np.array(desired_msg[0:size]).reshape(-1,1) #! make sure i + size < len(desired_msg)
+            desired = np.array(desired_msg[0:size]).reshape(-1,1)
             desired_msg = desired_msg[size:]
             task.setDesired(desired)
             
             self.TP.tasks.append(task)
-        print("Tasks:\n", self.TP.tasks)
         dq = self.TP.recursive_tp(self.robot)
         # publish joint velocity
         dq_msg = Float64MultiArray()

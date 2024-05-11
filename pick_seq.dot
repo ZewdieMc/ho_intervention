@@ -1,0 +1,17 @@
+digraph pastafarianism {
+ordering=out;
+graph [fontname="times-roman"];
+node [fontname="times-roman"];
+edge [fontname="times-roman"];
+pick_seq [fillcolor=orange, fontcolor=black, fontsize=9, label="Ⓜ pick_seq", shape=box, style=filled];
+set_goal [fillcolor=gray, fontcolor=black, fontsize=9, label=set_goal, shape=ellipse, style=filled];
+pick_seq -> set_goal;
+move_base [fillcolor=gray, fontcolor=black, fontsize=9, label=move_base, shape=ellipse, style=filled];
+pick_seq -> move_base;
+move_down [fillcolor=gray, fontcolor=black, fontsize=9, label=move_down, shape=ellipse, style=filled];
+pick_seq -> move_down;
+grab_box [fillcolor=gray, fontcolor=black, fontsize=9, label=grab_box, shape=ellipse, style=filled];
+pick_seq -> grab_box;
+move_up [fillcolor=gray, fontcolor=black, fontsize=9, label=move_up, shape=ellipse, style=filled];
+pick_seq -> move_up;
+}

@@ -96,7 +96,7 @@ def jacobian(T,EE_Pos, revolute):
     # 1. Initialize J and O.
     J = np.zeros((6, len(T)-1)) # Empty Jacobian (6 x N) where N - number of joints
     O = EE_Pos.flatten()# End-effector position    
-    # 2. For each joint of the robot[1.11747103 0.47111084 0.        ]
+    # 2. For each joint of the robot
     for i in range(len(T) - 1):
         # a. Extract z and o.
         z = T[i][0:3, 2].reshape(1, 3).flatten()
@@ -111,6 +111,38 @@ def jacobian(T,EE_Pos, revolute):
             # Prismatic joint
             J[:, i] = np.concatenate((z, np.zeros(3)), axis=0).reshape(6).tolist()
 
+    return J
+
+def jacobianBaseOnly(T, revolute):
+    '''
+        Function builds a Jacobian for the end-effector of a robot,
+        described by a list of kinematic transformations and a list of joint types.
+
+        Arguments:
+        T (list of Numpy array): list of transformations along the kinematic chain of the robot (from the base frame)
+        revolute (list of Bool): list of flags specifying if the corresponding joint is a revolute joint
+
+        Returns:
+        (Numpy array): end-effector Jacobian
+    '''
+    # 1. Initialize J and O.
+    J = np.zeros((6, len(T)-1)) # Empty Jacobian (6 x N) where N - number of joints
+    O = T[-1][0:3, -1].reshape(1, 3).flatten()#! Base position
+    # print("O in jacobianBaseOnly: ",O)
+    # 2. For each joint of the robot
+    for i in range(len(T) - 1):
+        # a. Extract z and o.
+        z = T[i][0:3, 2].reshape(1, 3).flatten()
+        o = T[i][0:3, 3].reshape(1, 3).flatten()
+  
+        # b. Check joint type.
+        if revolute[i]:
+            # Revolute joint
+            j_3 = np.cross(z, (O - o)) #cross product between z and o
+            J[:, i] = np.concatenate((j_3, z), axis=0).reshape(6).tolist()
+        else:
+            # Prismatic joint
+            J[:, i] = np.concatenate((z, np.zeros(3)), axis=0).reshape(6).tolist()
     return J
 
 # Compute the transformation matrix given the rotation and translation 
