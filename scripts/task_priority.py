@@ -9,7 +9,7 @@ class TaskPriority:
     def __init__(self, tasks) -> None:
         self.tasks = tasks
         self.sigmad_pub = rospy.Publisher('sigmad_marker', Marker, queue_size=10)
-        self.joint_vel_limits = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5]).reshape(-1,1)
+        self.joint_vel_limits = np.array([0.2, 0.5, 0.2, 0.2, 0.2, 0.2]).reshape(-1,1)
     def recursive_tp(self, robot):
         print("number of tasks: ", len(self.tasks))
         P = np.eye(robot.dof)
@@ -22,21 +22,35 @@ class TaskPriority:
             sigmad = self.tasks[-1].getDesired()
             print("sigmad: {}".format(task.name), sigmad)
             if task.name == "Configuration" or task.name == "Position" or task.name == "ArmOnly" or task.name == "BaseOnly":
-                self.publish_sigmad(sigmad)
+                # self.publish_sigmad(sigmad)
+                ...
+            # #! 
+            # if task.name == "BaseOnlyPositionTask":
+            #     for i in range(2, 6):
+            #         W[i, i] = 0
+            if task.name == "Configuration":
+                for i in range(0, 2):
+                    W[i, i] = 10
+
             if task.isActive():
                 J = task.getJacobian()  # Task Jacobian
+                print("Jacobian: ", J.shape)
+                print("p: ", P.shape)
                 Ji_q = J @ P            # Augmented Jacobian
 
                 #compute task velocity
+                print("task gain: ", task.getGain().shape)
+                print("error: ", task.getError().shape)
                 xi_bar = task.getGain()*0.7 @ task.getError()
-                print("error {} ".format(task.name), xi_bar)
+                print("error {} ".format(task.name), task.getError())
 
                 dq_i = DLS(Ji_q, 0.1 , W) @ (xi_bar - J @ dq)
-
+                print("dq_i: ", dq_i.shape)
+                print("dq: ", dq.shape)
                 dq += dq_i
 
                 # Update null space projector
-                P = P - np.linalg.pinv(Ji_q) @ J
+                P = P - np.linalg.pinv(Ji_q) @ J #! solution weighting in Ji_q
 
         print("dq before: ", dq)
         dq = self.velocity_scaling(dq)

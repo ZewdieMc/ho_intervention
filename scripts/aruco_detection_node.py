@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from geometry_msgs.msg import TransformStamped
 import numpy as np
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
@@ -8,12 +9,20 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 import tf
 from numpy import sin, cos
+from tf2_geometry_msgs import do_transform_pose
+import tf2_ros
+from scipy.spatial.transform import Rotation as R
+from tf.transformations import quaternion_from_euler
+
 
 class ArucoPose:
     def __init__(self):
         """
         Constructor for the ArucoPose class
         """
+        # Initialise TF listener
+        self.tf_butter = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_butter)
         # robot pose
         self.eta = np.zeros(3).reshape(-1, 1)
 
@@ -53,6 +62,9 @@ class ArucoPose:
         # subscribe to the odometry
         self.odom_sub = rospy.Subscriber('/odom', Odometry, self.odom_callback)
 
+        # frame id of the camera
+        self.camera_frame_id = None
+
 
     def odom_callback(self, odom):
         _, _, yaw = tf.transformations.euler_from_quaternion([odom.pose.pose.orientation.x, 
@@ -74,7 +86,9 @@ class ArucoPose:
         """
         # Convert the image message to a cv image
         cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+        # print("image shape: ", cv_image)
 
+        self.camera_frame_id = msg.header.frame_id
         # Detect the aruco markers
         self.estimateArucoPose(cv_image)
 
@@ -105,13 +119,34 @@ class ArucoPose:
         }
 
         dictionary = aruco_dictionaries[dict_name]
+
+        print("dictionary: ", dictionary)   
         
         return cv2.aruco.getPredefinedDictionary(dictionary)
+
+    def pose_to_transform(self,pose):
+        transform = TransformStamped()
+
+        transform.header = pose.header
+        transform.child_frame_id = "aruco"  # replace with appropriate child frame id
+
+        transform.transform.translation.x = pose.pose.position.x
+        transform.transform.translation.y = pose.pose.position.y
+        transform.transform.translation.z = pose.pose.position.z
+
+        transform.transform.rotation.x = pose.pose.orientation.x
+        transform.transform.rotation.y = pose.pose.orientation.y
+        transform.transform.rotation.z = pose.pose.orientation.z
+        transform.transform.rotation.w = pose.pose.orientation.w
+
+        return transform
+
 
     def estimateArucoPose(self, cv_image):
         """
         Estimate the pose of the aruco marker in the image
         """
+        print("Estimating aruco pose...", self.dictionary)
 
         # detect the aruco markers
         corners, ids, _ = cv2.aruco.detectMarkers(cv_image, self.dictionary)
@@ -123,40 +158,64 @@ class ArucoPose:
 
             # estimate the pose of the markers
             rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, self.marker_size, self.camera_matrix, self.dist_coeffs)
+            print("rvecs: ", rvecs.shape)
 
-            # draw marker axes
-            for i in range(len(rvecs)):
-                # cv2.aruco.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i], tvecs[i], 0.1)
-                self.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i], tvecs[i], 0.1)
+            # cv2.aruco.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i], tvecs[i], 0.1)
+            self.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[0], tvecs[0], 0.1)
 
-                # Convert tvecs to translation vector
-                tc = tvecs[i].reshape(-1, 1)
+            # Convert tvecs to translation vector
+            tc = tvecs[0].reshape(-1, 1)
+            pose = PoseStamped()
+            pose.header.stamp = rospy.Time.now()#! check
+            pose.header.frame_id = self.camera_frame_id#! check
+            pose.pose.position.x = tc[0]
+            pose.pose.position.y = tc[1] 
+            pose.pose.position.z = tc[2]
 
-                wc = self.transform_arcuo_pose(tc)
-                pose = PoseStamped()
-                pose.header.stamp = rospy.Time.now()#! check
-                pose.header.frame_id = 'world_ned'#! check
-                pose.pose.position.x = wc[0]
-                pose.pose.position.y = wc[1]
-                pose.pose.position.z = wc[2]
-                pose.pose.orientation.x = 0
-                pose.pose.orientation.y = 0
-                pose.pose.orientation.z = 0
-                pose.pose.orientation.w = 1
+            # # Convert rotation vector to rotation matrix
+            rotation_matrix, _ = cv2.Rodrigues(rvecs[0])
 
-                # Publish the pose of aruco marker
-                self.pose_pub.publish(pose)
+            # # Convert rotation matrix to quaternion
+            rotation = R.from_matrix(rotation_matrix)
+            quaternion = rotation.as_quat()
+            qx, qy, qz, qw = quaternion
+            pose.pose.orientation.x = qx
+            pose.pose.orientation.y = qy
+            pose.pose.orientation.z = qz
+            pose.pose.orientation.w = qw
 
-                #acuco pose in the world frame
-                rospy.loginfo('Aruco pose in the world frame: {}'.format(wc))
-                #! rospy.loginfo('Aruco pose in the camera frame: {}'.format(tc))
+            print("aruco pose in camera: ", pose)
 
-                            # Display the image
-            cv2.imshow("Image", cv_image)
+            aruco_transform = self.pose_to_transform(pose)
 
-            # wait for key press
-            cv2.waitKey()
+            offset = PoseStamped()
+            offset.header.stamp = rospy.Time.now()#! check
+            offset.header.frame_id = "aruco"#! check
+            offset.pose.position.x = 0
+            offset.pose.position.y = 0.068
+            offset.pose.position.z = -0.035
+            
+            # picking pose of aruco marker in camera frame
+            offset_in_camera = do_transform_pose(offset, aruco_transform)
+            # print(pose)
+            # print(offset_in_camera)
 
+            offset_in_camera.pose.orientation.x = qx
+            offset_in_camera.pose.orientation.y = qy
+            offset_in_camera.pose.orientation.z = qz
+            offset_in_camera.pose.orientation.w = qw
+            
+            print("aruco pose in camera: ", tc)
+            transform = self.tf_butter.lookup_transform('world_ned', self.camera_frame_id, rospy.Time(0), rospy.Duration(1.0))
+            aruco_pose_world = do_transform_pose(offset_in_camera, transform)
+
+            # Publish the pose of aruco marker
+            self.pose_pub.publish(aruco_pose_world)
+
+            #aruco pose in the world frame
+            rospy.loginfo('Aruco pose in the world frame: {}'.format(aruco_pose_world.pose.position))
+        else:
+            rospy.loginfo('No aruco...')
 
     def transform_arcuo_pose(self, tc):
         """
@@ -168,7 +227,7 @@ class ArucoPose:
              [sin(r[2,0]), cos(r[2,0]), 0, r[1,0]] , 
              [0, 0, 1, 0], 
              [0, 0, 0, 1]])
-        # Robot_base-to-camera transformation
+        # Robot_base-to-camera transformationy
         rTc = np.array(
                 [[0.0, 0.0, 1.0, 0.136],
                  [1.0, 0.0, 0.0, -0.033],

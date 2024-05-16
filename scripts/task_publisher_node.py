@@ -152,6 +152,11 @@ class TaskPublisher:
         self.move_joint_server = actionlib.SimpleActionServer('move_kobuki', MoveJointAction, self.move_joint, False)
         self.move_joint_server.start()
 
+        self.move_aruco_server = actionlib.SimpleActionServer('move_aruco', MoveToGoalAction, self.move_aruco, False)
+        self.move_aruco_server.start()
+
+
+        self.aruco_pose_sub = rospy.Subscriber('/aruco_pose', PoseStamped, self.aruco_pose_callback, queue_size=1)
 
 
         # Timer
@@ -159,7 +164,14 @@ class TaskPublisher:
 
         # For testing 
         # rospy.Timer(rospy.Duration(10), self.test_loop)
+    def aruco_pose_callback(self,msg):
+        x = msg.pose.position.x
+        y = msg.pose.position.y
+        z = msg.pose.position.z 
 
+        quaternion =  [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+        roll, pitch, yaw = euler_from_quaternion(quaternion)
+        self.aruco_pose = [x,y,z,roll,pitch,yaw]
 
     def js_cb(self, msg):
         if msg.name[0] == 'turtlebot/swiftpro/joint1':
@@ -202,6 +214,7 @@ class TaskPublisher:
     ##########################################
     ### Behaviors functions / Action callbacks
     ##########################################
+
     def move_turtlebot(self,goal):
         """
         Service to move turtlebot to the goal with configuation tasks
@@ -229,7 +242,7 @@ class TaskPublisher:
                 success = False
                 break
 
-            if rospy.Time.now() - start_time > rospy.Duration(20):
+            if rospy.Time.now() - start_time > rospy.Duration(10):
                 rospy.logerr('Time Exceed!!')
                 self.move_turtlebot_server.set_preempted()
                 self.active = False
@@ -241,6 +254,46 @@ class TaskPublisher:
         if success == True:
             self.active = False
             self.move_turtlebot_server.set_succeeded()
+
+    def move_aruco(self,goal):
+        """
+        Service to move robot to picking position
+        """
+        start_time = rospy.Time.now()
+        # Change goal to current task
+        x,y,z,roll,pitch,yaw = self.aruco_pose
+        self.current_task = ["ConfigurationTask"]
+        self.current_desired = [x, y, z, 0, 0, 0]
+        print(self.current_desired)
+        self.current_joint = [0]
+
+        # Activate publisher
+        self.active = True
+        success = True
+
+        # Keep checking the progress
+        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.01 and not rospy.is_shutdown():
+            print("configuration goal dist: ", np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
+
+            if self.move_aruco_server.is_preempt_requested() :
+                rospy.logerr('Preemptted!!')
+                self.move_aruco_server.set_preempted()
+                self.active = False
+                success = False
+                break
+
+            if rospy.Time.now() - start_time > rospy.Duration(30):
+                rospy.logerr('Time Exceed!!')
+                self.move_aruco_server.set_preempted()
+                self.active = False
+                success = False
+                break
+            
+            rospy.sleep(0.1)
+        rospy.logerr('Move turtlebot -- Success')
+        if success == True:
+            self.active = False
+            self.move_aruco_server.set_succeeded()
 
     def move_swiftpro(self,goal):
         """
@@ -269,7 +322,7 @@ class TaskPublisher:
                 success = False
                 break
 
-            if rospy.Time.now() - start_time > rospy.Duration(20):
+            if rospy.Time.now() - start_time > rospy.Duration(10):
                 rospy.logerr('Time Exceed!!')
                 self.move_swiftpro_server.set_preempted()
                 self.active = False
@@ -336,7 +389,7 @@ class TaskPublisher:
         # Change goal to current task
         x,y,z,roll,pitch,yaw = self.extract_pose(goal.goal.pose)
         self.current_task = ["BaseOnlyPositionTask"]
-        self.current_desired = [x, y, z, yaw]
+        self.current_desired = [x, y]
         print(self.current_desired)
         self.current_joint = [0]
 
@@ -345,11 +398,7 @@ class TaskPublisher:
         success = True
 
         # Keep checking the progress
-        while not np.linalg.norm(np.array(self.eta) - np.array(self.current_desired)) < 0.07 and not rospy.is_shutdown():
-            print("move base dist: ", np.linalg.norm(np.array(self.eta) - np.array(self.current_desired)))
-            print("current: ", self.eta)
-            print("desired: ", self.current_desired)
-
+        while not np.linalg.norm(np.array([self.eta[0], self.eta[1]]) - np.array(self.current_desired)) < 0.5 and not rospy.is_shutdown():
             if self.move_base_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
                 self.move_base_server.set_preempted()

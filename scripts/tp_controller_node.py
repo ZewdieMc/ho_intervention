@@ -44,7 +44,9 @@ class TPController:
             "BaseOrientationTask": BaseOrientationTask("BaseOrientation", np.array([0.0]).reshape(-1,1)),
             "OrientationTask": OrientationTask("Orientation", np.array([0.0, 0.0, 0.0]).reshape(-1,1)),
             "ArmOnlyTaskPositionTask": ArmOnlyPositionTask("ArmOnly", np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]).reshape(-1,1)),
-            "BaseOnlyPositionTask": BaseConfigurationTask("BaseOnly", np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1,1)),
+            "BaseOnlyPositionTask": BaseConfigurationTask("BaseOnly", np.array([0.0, 0.0]).reshape(-1,1)),
+            # "ArmOnlyTaskPositionTask": ConfigurationTask("ArmOnlyTaskPositionTask", np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]).reshape(-1,1)),
+            # "BaseOnlyPositionTask": ConfigurationTask("BaseOnlyPositionTask", np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)),
         }
 
         # Publisher

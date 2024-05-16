@@ -228,10 +228,11 @@ class BaseConfigurationTask(Task):
         """
         print("desired:", self.getDesired())
         print("eta:", robot.eta.reshape(-1, 1))
-        self.err = (self.getDesired() - robot.eta.reshape(-1, 1))
+        self.err = (self.getDesired() - np.array([robot.eta[0], robot.eta[1]]).reshape(-1, 1))#robot.eta.reshape(-1, 1))
         self.err[-1] = wrap_angle(self.err[-1])
         self.J = robot.getBaseOnlyJacobian()
-        self.J = np.block([[self.J[:3, :]], [self.J[-1, :]]])
+        # self.J = np.block([[self.J[:3, :]], [self.J[-1, :]]])
+        self.J = self.J[:2, :]
         print("JBaseOnly:\n", self.J)
         
 
