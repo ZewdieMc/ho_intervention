@@ -132,7 +132,7 @@ class TaskPublisher:
         # Subscribers
         rospy.Subscriber('/tp_controller/ee_pose', Odometry, self.ee_pose_cb)
         rospy.Subscriber('/odom', Odometry, self.odom_cb)
-        rospy.Subscriber('/turtlebot/joint_states', JointState, self.js_cb)
+        rospy.Subscriber('/swifpro_joint_states', Float64MultiArray, self.js_cb)
 
         # Publishers
         self.task_pub = rospy.Publisher("/desired_tasks", DesiredTask, queue_size= 10)
@@ -174,8 +174,7 @@ class TaskPublisher:
         self.aruco_pose = [x,y,z,roll,pitch,yaw]
 
     def js_cb(self, msg):
-        if msg.name[0] == 'turtlebot/swiftpro/joint1':
-            self.q = msg.position
+        self.q = list(msg.data)
 
     def odom_cb(self, odom):
         _, _, yaw = tf.transformations.euler_from_quaternion([odom.pose.pose.orientation.x, 
@@ -341,17 +340,30 @@ class TaskPublisher:
         """
         start_time = rospy.Time.now()
         # Change goal to current task
-        self.current_task = ["JointPositionTask"]
-        self.current_desired = goal.position
-        self.current_joint = goal.joint
+        self.current_task = []
+        self.current_desired = []
+        self.current_joint = []
+        # Change goal to current task
+        for i in range(len(goal.joint)):
+            self.current_task.append("JointPositionTask")
+            self.current_desired.append(goal.position)
+            self.current_joint.append(goal.joint)
 
         # Activate publisher
         self.active = True
         success = True
 
         # Keep checking the progress
-        while not np.linalg.norm(np.array(self.q[0]) - np.array(self.current_desired)) < 0.045 and not rospy.is_shutdown():
-            print("joint task err: ", np.linalg.norm(np.array(self.q[0]) - np.array(self.current_desired)))
+        while  not rospy.is_shutdown():
+            joint_err = []
+            for i in range(len(goal.joint)):
+                joint_err = np.linalg.norm(np.array(self.q[goal.joint[i]]) - np.array(goal.position[i]))
+                if joint_err < 0.05:
+                    success = True
+                    break
+
+    
+                
             if self.move_joint_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
                 self.move_joint_server.set_preempted()

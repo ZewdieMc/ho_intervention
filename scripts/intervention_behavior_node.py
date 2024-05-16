@@ -8,6 +8,7 @@ from ho_intervention.msg import MoveJointAction, MoveToGoalAction, MoveToGoalAct
 import time
 from tf.transformations import quaternion_from_euler
 from std_srvs.srv import SetBool
+import numpy as np
 
 
 class setGoal (py_trees.behaviour.Behaviour):
@@ -401,8 +402,8 @@ class PlaceBox (py_trees.behaviour.Behaviour):
             goal = MoveJointGoal()
             if self.name == "align_EE":
                 rospy.loginfo('align EE orientation')
-                goal.joint = [0]
-                goal.position =  [1.57]
+                goal.joint = [0,1,2]
+                goal.position =  [3*np.pi/2, 0.4, 0.4]
             else:
                 rospy.loginfo('Send goal to place box')
                 goal.joint = [0]

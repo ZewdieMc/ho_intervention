@@ -5,6 +5,7 @@ from sensor_msgs.msg import JointState
 import tf2_ros
 from geometry_msgs.msg import TransformStamped
 from tf.transformations import quaternion_from_euler
+from std_msgs.msg import Float64MultiArray
 class SwiftProManipulator:
     """
     Class to contain the kinematics of Swift Pro Manipulator
@@ -36,6 +37,9 @@ class SwiftProManipulator:
         # Subscriber
         self.joint_state_sub = rospy.Subscriber("/turtlebot/joint_states", JointState, self.joint_state_callback)
 
+        # Publisher
+        self.joint_state_pub = rospy.Publisher("/swifpro_joint_states", Float64MultiArray, queue_size=10)
+
     ################################
     ### Callbacks Functions
     ################################
@@ -46,7 +50,11 @@ class SwiftProManipulator:
             self.q[2] = float(msg.position[2])
             self.q[3] = float(msg.position[3])
 
-            return self.update_kinematics()
+        joint_array = Float64MultiArray()
+        joint_array.data = list(self.q.flatten())
+
+        self.joint_state_pub.publish()
+        return self.update_kinematics()
 
     ################################
     ### Class Functions
