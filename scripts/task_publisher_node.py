@@ -34,7 +34,7 @@ class TaskPublisher:
         #! Test Position task
         self.tasks_list = [["BaseOnlyPositionTask"]]
         self.desireds_list = [
-                                [1.7, -0.12, -0.3, 0.0],
+                                # [1.7, -0.12, -0.3, 0.0],
                                 # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
                                 # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
                                 # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
@@ -45,7 +45,7 @@ class TaskPublisher:
                                 # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
                                 # [1.7, -0.12, 0.0, 0.0, 2.0, 0.0, -0.12, -0.3, 0.0, 0.0],
                             ]
-        self.joint_list = [[0, 0]]
+        # self.joint_list = [[0, 0]]
     
         #! Test JointPosition task and Configuration task
         # self.tasks_list = [["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],["JointPositionTask","ConfigurationTask"],
@@ -125,10 +125,10 @@ class TaskPublisher:
 
         self.control_interval  = 0.1
 
-        self.current_task = self.tasks_list.pop(0)
+        self.current_task = None#!self.tasks_list.pop(0)
         
-        self.current_desired = self.desireds_list.pop(0)
-        self.current_joint = self.joint_list.pop(0)
+        self.current_desired = None#! self.desireds_list.pop(0)
+        self.current_joint = None#!self.joint_list.pop(0)
         # Subscribers
         rospy.Subscriber('/tp_controller/ee_pose', Odometry, self.ee_pose_cb)
         rospy.Subscriber('/odom', Odometry, self.odom_cb)
@@ -149,7 +149,7 @@ class TaskPublisher:
         self.move_base_server = actionlib.SimpleActionServer('move_base', MoveToGoalAction, self.move_base, False)
         self.move_base_server.start()
 
-        self.move_joint_server = actionlib.SimpleActionServer('move_kobuki', MoveJointAction, self.move_joint, False)
+        self.move_joint_server = actionlib.SimpleActionServer('move_joint', MoveJointAction, self.move_joint, False)
         self.move_joint_server.start()
 
         self.move_aruco_server = actionlib.SimpleActionServer('move_aruco', MoveToGoalAction, self.move_aruco, False)
@@ -161,6 +161,7 @@ class TaskPublisher:
 
         # Timer
         rospy.Timer(rospy.Duration(self.control_interval), self.task_publish_loop)
+        rospy.sleep(5)
 
         # For testing 
         # rospy.Timer(rospy.Duration(10), self.test_loop)
@@ -175,6 +176,7 @@ class TaskPublisher:
 
     def js_cb(self, msg):
         self.q = list(msg.data)
+        # print("self.q: ", self.q)
 
     def odom_cb(self, odom):
         _, _, yaw = tf.transformations.euler_from_quaternion([odom.pose.pose.orientation.x, 
@@ -222,7 +224,9 @@ class TaskPublisher:
         # Change goal to current task
         x,y,z,roll,pitch,yaw = self.extract_pose(goal.goal.pose)
         self.current_task = ["ConfigurationTask"]
+        # self.current_task = ["PositionTask"]
         self.current_desired = [x, y, z, roll, pitch, yaw]
+        # self.current_desired = [x, y, z]
         print(self.current_desired)
         self.current_joint = [0]
 
@@ -256,13 +260,14 @@ class TaskPublisher:
 
     def move_aruco(self,goal):
         """
-        Service to move robot to picking position
+        Service to move robot to picking pose(goal) subscribed from aruco node
         """
         start_time = rospy.Time.now()
         # Change goal to current task
         x,y,z,roll,pitch,yaw = self.aruco_pose
+        print(f"self.aruco pose: {x}, {y}, {z} <=====> goal: {goal.goal.pose.position.x}, {goal.goal.pose.position.y}, {goal.goal.pose.position.z}")
         self.current_task = ["ConfigurationTask"]
-        self.current_desired = [x, y, z, 0, 0, 0]
+        self.current_desired = [x, y, z, roll, pitch, yaw]
         print(self.current_desired)
         self.current_joint = [0]
 
@@ -271,8 +276,8 @@ class TaskPublisher:
         success = True
 
         # Keep checking the progress
-        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.01 and not rospy.is_shutdown():
-            print("configuration goal dist: ", np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
+        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.05 and not rospy.is_shutdown():
+            print("Picking pose error: ", np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
 
             if self.move_aruco_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
@@ -289,10 +294,11 @@ class TaskPublisher:
                 break
             
             rospy.sleep(0.1)
-        rospy.logerr('Move turtlebot -- Success')
+        
         if success == True:
             self.active = False
             self.move_aruco_server.set_succeeded()
+            rospy.logwarn('Move to picking pose -- Success')
 
     def move_swiftpro(self,goal):
         """
@@ -346,8 +352,12 @@ class TaskPublisher:
         # Change goal to current task
         for i in range(len(goal.joint)):
             self.current_task.append("JointPositionTask")
-            self.current_desired.append(goal.position)
-            self.current_joint.append(goal.joint)
+            self.current_desired.append(goal.position[i])
+            self.current_joint.append(goal.joint[i])
+
+        print(self.current_desired)
+        print(self.current_joint)
+        
 
         # Activate publisher
         self.active = True
@@ -355,15 +365,16 @@ class TaskPublisher:
 
         # Keep checking the progress
         while  not rospy.is_shutdown():
+            # print(self.q)
             joint_err = []
             for i in range(len(goal.joint)):
-                joint_err = np.linalg.norm(np.array(self.q[goal.joint[i]]) - np.array(goal.position[i]))
-                if joint_err < 0.05:
-                    success = True
-                    break
+                err = np.linalg.norm(np.array(self.q[goal.joint[i]]) - np.array(goal.position[i]))
+                joint_err.append(err < 0.2)
 
-    
-                
+            if all(joint_err):
+                self.success = True
+                break
+                      
             if self.move_joint_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
                 self.move_joint_server.set_preempted()
@@ -410,7 +421,7 @@ class TaskPublisher:
         success = True
 
         # Keep checking the progress
-        while not np.linalg.norm(np.array([self.eta[0], self.eta[1]]) - np.array(self.current_desired)) < 0.5 and not rospy.is_shutdown():
+        while not np.linalg.norm(np.array([self.eta[0], self.eta[1]]) - np.array(self.current_desired)) < 0.6 and not rospy.is_shutdown():
             if self.move_base_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
                 self.move_base_server.set_preempted()

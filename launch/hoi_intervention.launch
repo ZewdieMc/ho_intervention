@@ -1,0 +1,6 @@
+<launch>    
+ 
+    <node pkg="ho_intervention" type="aruco_detection_node.py" name="aruco_detection_node" output="screen"/>    
+    <node pkg="ho_intervention" type="tp_controller_node.py" name="tp_controller"/>    
+    <node pkg="ho_intervention" type="task_publisher_node.py" name="task_publisher" output="screen"/>    
+</launch>

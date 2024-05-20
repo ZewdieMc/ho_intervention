@@ -6,6 +6,9 @@ import tf2_ros
 from geometry_msgs.msg import TransformStamped
 from tf.transformations import quaternion_from_euler
 from std_msgs.msg import Float64MultiArray
+
+def wrap_angle(angle):
+    return (angle + ( 2.0 * np.pi * np.floor( ( np.pi - angle ) / ( 2.0 * np.pi ) ) ) )
 class SwiftProManipulator:
     """
     Class to contain the kinematics of Swift Pro Manipulator
@@ -53,7 +56,7 @@ class SwiftProManipulator:
         joint_array = Float64MultiArray()
         joint_array.data = list(self.q.flatten())
 
-        self.joint_state_pub.publish()
+        self.joint_state_pub.publish(joint_array)
         return self.update_kinematics()
 
     ################################
@@ -112,10 +115,12 @@ class SwiftProManipulator:
         static_transformStamped.transform.translation.y = 0.0
         static_transformStamped.transform.translation.z = 0.0
 
-        static_transformStamped.transform.rotation.x = 0.0
-        static_transformStamped.transform.rotation.y = 0.0
-        static_transformStamped.transform.rotation.z = 0.0
-        static_transformStamped.transform.rotation.w = 1.0
+        yaw = 0#!yaw = -np.pi
+        q = quaternion_from_euler(0,0,yaw)
+        static_transformStamped.transform.rotation.x = q[0]
+        static_transformStamped.transform.rotation.y = q[1]
+        static_transformStamped.transform.rotation.z = q[2]
+        static_transformStamped.transform.rotation.w = q[3]
 
         static_tf_broadcaster.sendTransform(static_transformStamped)
 

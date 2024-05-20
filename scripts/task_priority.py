@@ -19,7 +19,7 @@ class TaskPriority:
         W[1, 1] = 1
         for i, task in enumerate(self.tasks):
             task.update(robot)
-            sigmad = self.tasks[-1].getDesired()
+            sigmad = self.tasks[i].getDesired()
             print("sigmad: {}".format(task.name), sigmad)
             if task.name == "Configuration" or task.name == "Position" or task.name == "ArmOnly" or task.name == "BaseOnly":
                 # self.publish_sigmad(sigmad)
@@ -28,9 +28,9 @@ class TaskPriority:
             # if task.name == "BaseOnlyPositionTask":
             #     for i in range(2, 6):
             #         W[i, i] = 0
-            if task.name == "Configuration":
-                for i in range(0, 2):
-                    W[i, i] = 10
+            # if task.name == "Configuration":
+                # for i in range(0, 2):
+                    # W[i, i] = 10
 
             if task.isActive():
                 J = task.getJacobian()  # Task Jacobian
@@ -59,8 +59,20 @@ class TaskPriority:
     
     def velocity_scaling(self, dq):
         s = max(np.abs(dq[2:]) / self.joint_vel_limits[2:])
-        dq[0] = max(min(dq[0], 1.0), -1.0)
+
+        dq[0] = max(min(dq[0], 0.15), -0.15)
         dq[1] = max(min(dq[1], 0.3), -0.3)
+
+        # if dq[0]> 0:
+        #     dq[0] = max(dq[0], 0.6)
+        # elif dq[0]< 0:
+        #     dq[0] = min(dq[0], -0.6)
+
+        # if dq[1]> 0:
+        #     dq[1] = max(dq[1], 0.15)
+        # elif dq[1]< 0:
+        #     dq[1] = min(dq[1], -0.15)
+            
         if s > 1:
             dq[2:] =  (dq[2:]) / float(s)
             return dq

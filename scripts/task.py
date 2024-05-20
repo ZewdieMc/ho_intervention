@@ -143,7 +143,7 @@ class ConfigurationTask(Task):
     def update(self, robot):
         self.J = robot.getEEJacobian()
         self.err = self.getDesired() - robot.getEEPose()
-        self.err[-1] = wrap_angle(self.err[-1])
+        self.err[-1] = wrap_angle(self.err[-1])#! if the robot is not getting to the set point, comment this. or use positionTask
 
 class JointLimitTask(Task):
     '''

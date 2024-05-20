@@ -2,7 +2,7 @@
     <include file="$(find turtlebot_simulation)/launch/turtlebot_hoi.launch"/>
     <node pkg="ho_localization" type="localization_node.py" name="localization_node"/>
     <node pkg="ho_intervention" type="vel_adapter_node.py" name="cmd_vel_adapter"/>    
-    <node pkg="ho_intervention" type="aruco_detection_node.py" name="aruco_detection_node"/>    
+    <node pkg="ho_intervention" type="aruco_detection_node.py" name="aruco_detection_node" output="screen"/>    
     <node pkg="ho_intervention" type="tp_controller_node.py" name="tp_controller"/>    
-    <node pkg="ho_intervention" type="task_publisher_node.py" name="task_publisher"/>    
+    <!-- <node pkg="ho_intervention" type="task_publisher_node.py" name="task_publisher"/>     -->
 </launch>

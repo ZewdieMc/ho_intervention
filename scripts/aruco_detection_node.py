@@ -33,7 +33,7 @@ class ArucoPose:
         self.dist_coeffs = None
 
         # aruco dictionary name
-        self.dict_name = 'DICT_ARUCO_ORIGINAL'
+        self.dict_name = 'DICT_ARUCO_ORIGINAL' #!'DICT_4X4_100'
 
         # aruco dictionary
         self.dictionary = self.getDictionary(self.dict_name)
@@ -88,7 +88,7 @@ class ArucoPose:
         cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         # print("image shape: ", cv_image)
 
-        self.camera_frame_id = msg.header.frame_id
+        self.camera_frame_id = msg.header.frame_id#"realsense_color_optical_frame"#msg.header.frame_id
         # Detect the aruco markers
         self.estimateArucoPose(cv_image)
 
@@ -158,7 +158,7 @@ class ArucoPose:
 
             # estimate the pose of the markers
             rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, self.marker_size, self.camera_matrix, self.dist_coeffs)
-            print("rvecs: ", rvecs.shape)
+            # print("rvecs: ", rvecs.shape)
 
             # cv2.aruco.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i], tvecs[i], 0.1)
             self.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[0], tvecs[0], 0.1)
@@ -192,7 +192,7 @@ class ArucoPose:
             offset.header.stamp = rospy.Time.now()#! check
             offset.header.frame_id = "aruco"#! check
             offset.pose.position.x = 0
-            offset.pose.position.y = 0.068
+            offset.pose.position.y = 0.076
             offset.pose.position.z = -0.035
             
             # picking pose of aruco marker in camera frame
@@ -205,9 +205,11 @@ class ArucoPose:
             offset_in_camera.pose.orientation.z = qz
             offset_in_camera.pose.orientation.w = qw
             
-            print("aruco pose in camera: ", tc)
+            # print("aruco pose in camera: ", tc)
             transform = self.tf_butter.lookup_transform('world_ned', self.camera_frame_id, rospy.Time(0), rospy.Duration(1.0))
             aruco_pose_world = do_transform_pose(offset_in_camera, transform)
+            # aruco_pose_world = self.tf_butter.transform(offset_in_camera, "world_ned")#! check if these two are the same
+
 
             # Publish the pose of aruco marker
             self.pose_pub.publish(aruco_pose_world)
@@ -254,6 +256,8 @@ class ArucoPose:
         # The coordinate system: x-axis (red), y-axis (green), z-axis (blue)
         cv2.drawFrameAxes(image, camera_matrix, dist_coeffs, rvec, tvec, length)
 
+
+    
 
 if __name__ == '__main__':
     rospy.init_node('aruco_pose_node')
