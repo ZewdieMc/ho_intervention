@@ -9,6 +9,7 @@ import time
 from tf.transformations import quaternion_from_euler
 from std_srvs.srv import SetBool
 import numpy as np
+from copy import copy
 
 
 class setGoal (py_trees.behaviour.Behaviour):
@@ -36,26 +37,27 @@ class setGoal (py_trees.behaviour.Behaviour):
         self.blackboard.register_key("base_goal", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key("base_goal", access=py_trees.common.Access.READ)
 
-        self.base_goal = None
+        self.blackboard.register_key("drop_goal", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("drop_goal", access=py_trees.common.Access.READ)
+
+        self.aruco_pose = None
 
     def aruco_pose_callback(self, msg):
         x = msg.pose.position.x
         y = msg.pose.position.y
         z = msg.pose.position.z
         # base_offset goal
-        self.base_goal = PoseStamped()
-        self.base_goal.pose.position.x = x 
-        self.base_goal.pose.position.y = y                    
-        self.base_goal.pose.position.z = 0.0
-        # self.aruco_pose_sub.unregister() #! only need to get the pose once...FOR NOW
+        self.aruco_pose = PoseStamped()
+        self.aruco_pose.pose.position.x = x 
+        self.aruco_pose.pose.position.y = y                    
+        self.aruco_pose.pose.position.z = z
+        self.aruco_pose_sub.unregister() #! only need to get the pose once...FOR NOW
         q = quaternion_from_euler(0,0,0)
-        self.base_goal.pose.orientation.x = q[0]
-        self.base_goal.pose.orientation.y = q[1]
-        self.base_goal.pose.orientation.z = q[2]
-        self.base_goal.pose.orientation.w = q[3]
-        if self.base_goal is not None:
-            self.blackboard.base_goal = self.base_goal
-
+        self.aruco_pose.pose.orientation.x = q[0]
+        self.aruco_pose.pose.orientation.y = q[1]
+        self.aruco_pose.pose.orientation.z = q[2]
+        self.aruco_pose.pose.orientation.w = q[3]
+       
     def setup(self):
         self.logger.debug("  %s [setGoal::setup()]" % self.name)
 
@@ -65,57 +67,34 @@ class setGoal (py_trees.behaviour.Behaviour):
         
 
     def update(self):
-        # offset_goal = PoseStamped()
-        # offset_goal.pose.position.x = 0.8
-        # offset_goal.pose.position.y = 0.0
-        # offset_goal.pose.position.z = -0.3
 
-        # q = quaternion_from_euler(0,0,0)
-        # offset_goal.pose.orientation.x = q[0]
-        # offset_goal.pose.orientation.y = q[1]
-        # offset_goal.pose.orientation.z = q[2]
-        # offset_goal.pose.orientation.w = q[3]
-        # self.blackboard.offset_goal = offset_goal
-
+        if self.aruco_pose is None:
+            return py_trees.common.Status.RUNNING
 
         # goal for the swiftpro to grap the box #! This is now from acuro pose feedback
-        # picking_goal = PoseStamped()
-        # picking_goal.pose.position.x = 2.0
-        # picking_goal.pose.position.y = 0.0
-        # picking_goal.pose.position.z = -0.135
+        picking_goal = copy(self.aruco_pose)
+        self.blackboard.picking_goal = picking_goal
 
-        # q = quaternion_from_euler(0, 0, 0)
-        # picking_goal.pose.orientation.x = q[0]
-        # picking_goal.pose.orientation.y = q[1]
-        # picking_goal.pose.orientation.z = q[2]
-        # picking_goal.pose.orientation.w = q[3]
-        # self.blackboard.picking_goal = picking_goal
+        offset_goal = PoseStamped()
+        offset_goal.pose.position.x = self.aruco_pose.pose.position.x
+        offset_goal.pose.position.y = self.aruco_pose.pose.position.y
+        offset_goal.pose.position.z = self.aruco_pose.pose.position.z - 0.1
+        self.blackboard.offset_goal = offset_goal
+
+        base_goal = PoseStamped()
+        base_goal.pose.position.x = self.aruco_pose.pose.position.x
+        base_goal.pose.position.y = self.aruco_pose.pose.position.y
+        base_goal.pose.position.z = self.aruco_pose.pose.position.z 
+        self.blackboard.base_goal = base_goal
+
+        drop_goal = PoseStamped()
+        drop_goal.pose.position.x = self.aruco_pose.pose.position.x + 0.5
+        drop_goal.pose.position.y = self.aruco_pose.pose.position.y + 0.5
+        drop_goal.pose.position.z = self.aruco_pose.pose.position.z 
+        self.blackboard.drop_goal = drop_goal
         
 
-        # goal for the swiftpro to move the box to platform #! Danger.....dont use this task for platform...the robot will crash
-        # platform_goal = PoseStamped()
-        # platform_goal.pose.position.x = 1.60775
-        # platform_goal.pose.position.y = 0.00
-        # platform_goal.pose.position.z = -0.45
-
-        # q = quaternion_from_euler(0, 0, 0)
-        # platform_goal.pose.orientation.x = q[0]
-        # platform_goal.pose.orientation.y = q[1]
-        # platform_goal.pose.orientation.z = q[2]
-        # platform_goal.pose.orientation.w = q[3]
-        # self.blackboard.platform_goal = platform_goal
-
-        # base_goal = PoseStamped()
-        # base_goal.pose.position.x = -1.2
-        # base_goal.pose.position.y = 0.00
-        # base_goal.pose.position.z = 0.0
-
-        # q = quaternion_from_euler(0, 0, 0)
-        # base_goal.pose.orientation.x = q[0]
-        # base_goal.pose.orientation.y = q[1]
-        # base_goal.pose.orientation.z = q[2]
-        # base_goal.pose.orientation.w = q[3]
-        self.blackboard.base_goal = self.base_goal
+  
         return py_trees.common.Status.SUCCESS
 
 
@@ -164,17 +143,24 @@ class moveTurtlebotAruco (py_trees.behaviour.Behaviour):
     # this one only moves the base of the robot. no arm behavior here.
     def __init__(self, name):
         super(moveTurtlebotAruco, self).__init__(name)
+        self.name = name
         self.blackboard = self.attach_blackboard_client(name=self.name)
         self.blackboard.register_key("picking_goal", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key("picking_goal", access=py_trees.common.Access.READ)
+
+        self.blackboard.register_key("offset_goal", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("offset_goal", access=py_trees.common.Access.READ)
+
+        self.blackboard.register_key("drop_goal", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("drop_goal", access=py_trees.common.Access.READ)
         self.picking_goal = None
 
-        self.aruco_pose_sub = rospy.Subscriber('/aruco_pose', PoseStamped, self.aruco_pose_callback, queue_size=1)
+        # self.aruco_pose_sub = rospy.Subscriber('/aruco_pose', PoseStamped, self.aruco_pose_callback, queue_size=1)
 
     def setup(self):
         self.logger.debug("  %s [moveTurtlebot_aruco::setup()]" % self.name)
         self.goal_sent = False
-        self.client = actionlib.SimpleActionClient('move_aruco', MoveToGoalAction)
+        self.client = actionlib.SimpleActionClient('move_turtlebot', MoveToGoalAction)
         rospy.loginfo("Waiting for move turtlebot action...")
         self.client.wait_for_server()
 
@@ -203,12 +189,37 @@ class moveTurtlebotAruco (py_trees.behaviour.Behaviour):
 
     def update(self):
         # print(self.client.get_state())
-        if self.client.get_state() == actionlib.GoalStatus.PENDING or self.client.get_state() == actionlib.GoalStatus.LOST and self.picking_goal is not None:
-            self.blackboard.picking_goal = self.picking_goal
-            print(self.blackboard.picking_goal)
+        if self.client.get_state() == actionlib.GoalStatus.PENDING or self.client.get_state() == actionlib.GoalStatus.LOST:
+            # self.blackboard.picking_goal = self.picking_goal
             rospy.loginfo('Send picking goal')
-            goal = MoveToGoalActionGoal()
-            goal.goal = self.blackboard.picking_goal
+            
+
+            # self.picking_goal = PoseStamped()
+            # self.picking_goal.pose.position.x = 1.726 
+            # self.picking_goal.pose.position.y = -0.021                   
+            # self.picking_goal.pose.position.z = -0.154
+            
+            # q = quaternion_from_euler(0,0,0)
+            # self.picking_goal.pose.orientation.x = q[0]
+            # self.picking_goal.pose.orientation.y = q[1]
+            # self.picking_goal.pose.orientation.z = q[2]
+            # self.picking_goal.pose.orientation.w = q[3]
+            # self.blackboard.picking_goal = self.picking_goal
+            
+            if self.name == "move_down":
+                print("move_down" + self.name)
+                goal = MoveToGoalActionGoal()
+                goal.goal = self.blackboard.picking_goal
+            elif self.name == "move_up":
+                print("move_up" +self.name)
+                goal = MoveToGoalActionGoal()
+                goal.goal = self.blackboard.offset_goal
+
+            elif self.name == "move_drop":
+                goal = MoveToGoalActionGoal()
+                goal.goal = self.blackboard.drop_goal
+            print(goal.goal)
+
             self.client.send_goal(goal)
             self.goal_sent = True
         if self.client.get_state() == actionlib.GoalStatus.PREEMPTED :
@@ -234,6 +245,9 @@ class moveBase (py_trees.behaviour.Behaviour):
         self.blackboard.register_key("base_goal", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key("base_goal", access=py_trees.common.Access.READ)
 
+        self.blackboard.register_key("drop_goal", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key("drop_goal", access=py_trees.common.Access.READ)
+
     def setup(self):
         self.logger.debug("  %s [moveBase::setup()]" % self.name)
         self.goal_sent = False
@@ -251,7 +265,10 @@ class moveBase (py_trees.behaviour.Behaviour):
             rospy.loginfo('Send goal to base')
             goal = MoveToGoalActionGoal()
             # print(self.blackboard.base_goal)
-            goal.goal = self.blackboard.base_goal
+            if self.name == "move_base":
+                goal.goal = self.blackboard.base_goal
+            else:
+                goal.goal = self.blackboard.drop_goal
             self.client.send_goal(goal)
             self.goal_sent = True
         if self.client.get_state() == actionlib.GoalStatus.PREEMPTED :
@@ -419,11 +436,16 @@ class PlaceBox (py_trees.behaviour.Behaviour):
             if self.name == "align_EE":
                 rospy.loginfo('align EE orientation')
                 goal.joint = [0, 1, 2 ]
-                goal.position =  [np.pi/2, 0.05,-0.1]#! realrobot [-np.pi/2, -0.4,-0.1] #! in real robot, it's -np.pi/2
+                # goal.position =  [np.pi/2, 0.05,-0.1]#! realrobot [-np.pi/2, -0.4,-0.1] #! in real robot, it's -np.pi/2
+                goal.position =  [-np.pi/2, -0.4,-0.1]
+            elif self.name == "move_to_place_box":
+                rospy.loginfo('Send goal to place box')
+                goal.joint = [2,0,1]
+                goal.position =  [0.0,np.pi/2, 0.0]
             else:
                 rospy.loginfo('Send goal to place box')
                 goal.joint = [0]
-                goal.position =  [-1.45]
+                goal.position =  [-np.pi/2]
             self.client.send_goal(goal)
             self.goal_sent = True
 
@@ -453,16 +475,21 @@ if __name__ == "__main__":
     # move_down = moveSwiftpro("move_down")
     move_down = moveTurtlebotAruco("move_down")         #move to picking position...config task
     enable_suction = EnableSuction("grab_box")          #enable suction
-    move_up = moveTurtlebot("move_up")                  #move up after picking   ...config task
+    move_up = moveTurtlebotAruco("move_up")                  #move up after picking   ...config task
     move_place_box = PlaceBox("move_to_place_box")      #move to placing position...joint1 for now
-    place_box = DisableSuction("place_box")             #disable suction
+    disable_suction = DisableSuction("place_box")             #disable suction
+    move_drop = moveBase("move_drop")
+    move_drop_box = PlaceBox("dropping")      #move to placing position...joint1 for now
+
+    drop = moveTurtlebotAruco("move_drop")
+    
 
 
     # go to pickup spot sequence
     go_to_seq = py_trees.composites.Sequence(name="pick_seq", memory=True)
     # go_to_seq.add_children([set_goal,align_EE, move_base,move_down, enable_suction,move_up, move_place_box, place_box])
     # go_to_seq.add_children([set_goal,align_EE])
-    go_to_seq.add_children([set_goal,align_EE,move_base, move_down])
+    go_to_seq.add_children([set_goal,align_EE, move_down,enable_suction,move_up,move_place_box,move_drop,move_drop_box,drop,disable_suction])
 
     print("Call setup for all tree children")
     py_trees.display.render_dot_tree(go_to_seq)

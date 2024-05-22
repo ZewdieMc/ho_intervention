@@ -17,6 +17,13 @@ class TurtlebotManipulator:
         self.theta = np.array([-np.pi/2, 0.0])
         self.a = np.array([0.0, 0.0])
         self.alpha = np.array([-np.pi/2, np.pi/2])
+
+        #### REAL ROBOT ##################
+        self.d = np.array([-0.198, 0.0507])
+        self.theta = np.array([np.pi/2, 0.0])
+        self.a = np.array([0.0, 0.0])
+        self.alpha = np.array([np.pi/2, -np.pi/2])
+
         self.revolute = np.array([True, False])
 
         self.arm = SwiftProManipulator()
@@ -121,9 +128,26 @@ class TurtlebotManipulator:
         dx_dq3 = -self.arm.l2*math.sin(q3)*math.cos(q1)*math.sin(self.eta[3]) + (-self.arm.l2*math.sin(q3)*math.sin(q1))*math.cos(self.eta[3])
         dy_dq3 = -self.arm.l2*math.sin(q3)*math.cos(q1)*-math.cos(self.eta[3]) + (-self.arm.l2*math.sin(q3)*math.sin(q1))*math.sin(self.eta[3])
         dz_dq3 = -self.arm.l2*math.cos(q3)
+        ####################################################### REAL ROBOT ##################################################
 
+        dx_dq1 = A * math.sin(q1)*math.sin(self.eta[3]) - A * math.cos(q1)*math.cos(self.eta[3])
+        dy_dq1 = -A * math.sin(q1)*math.cos(self.eta[3]) - A * math.cos(q1)*math.sin(self.eta[3])
+
+        dx_dq2 = self.arm.l1*math.cos(q2)*math.cos(q1)*math.sin(self.eta[3]) - (-self.arm.l1*math.cos(q2)*math.sin(q1))*math.cos(self.eta[3])
+        dy_dq2 = self.arm.l1*math.cos(q2)*math.cos(q1)*-math.cos(self.eta[3]) - (-self.arm.l1*math.cos(q2)*math.sin(q1))*math.sin(self.eta[3])
+        dz_dq2 = self.arm.l1*math.sin(q2)
+
+        dx_dq3 = self.arm.l2*math.sin(q3)*math.cos(q1)*math.sin(self.eta[3]) - (-self.arm.l2*math.sin(q3)*math.sin(q1))*math.cos(self.eta[3])
+        dy_dq3 = self.arm.l2*math.sin(q3)*math.cos(q1)*-math.cos(self.eta[3]) - (-self.arm.l2*math.sin(q3)*math.sin(q1))*math.sin(self.eta[3])
+        dz_dq3 = -self.arm.l2*math.cos(q3)
+        #######################################################################################################################
         J[:,0] = np.array([dx_dq1, dy_dq1,      0, 0, 0, 1 ])# derivertive by q1
         J[:,1] = np.array([dx_dq2, dy_dq2, dz_dq2, 0, 0, 0 ]) # derivertive by q2
         J[:,2] = np.array([dx_dq3, dy_dq3, dz_dq3, 0, 0, 0 ]) # derivertive by q3
         J[:,3] = np.array([0, 0, 0, 0, 0, 1 ]) # derivertive by q4
+
+        # J[:,0] = np.array([-dx_dq1, dy_dq1,      0, 0, 0, 1 ])# derivertive by q1
+        # J[:,1] = np.array([-dx_dq2, dy_dq2, dz_dq2, 0, 0, 0 ]) # derivertive by q2
+        # J[:,2] = np.array([dx_dq3, dy_dq3, dz_dq3, 0, 0, 0 ]) # derivertive by q3
+        # J[:,3] = np.array([0, 0, 0, 0, 0, 1 ]) # derivertive by q4
         return J

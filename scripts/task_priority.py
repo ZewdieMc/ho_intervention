@@ -53,6 +53,8 @@ class TaskPriority:
                 P = P - np.linalg.pinv(Ji_q) @ J #! solution weighting in Ji_q
 
         print("dq before: ", dq)
+        print("dq before: ", dq.shape)
+
         dq = self.velocity_scaling(dq)
         print("dq after: ", dq)
         return dq       
@@ -63,10 +65,10 @@ class TaskPriority:
         dq[0] = max(min(dq[0], 0.15), -0.15)
         dq[1] = max(min(dq[1], 0.3), -0.3)
 
-        # if dq[0]> 0:
-        #     dq[0] = max(dq[0], 0.6)
-        # elif dq[0]< 0:
-        #     dq[0] = min(dq[0], -0.6)
+        if dq[0]> 0.03:
+            dq[0] = max(dq[0], 0.5)
+        elif dq[0]< -0.03:
+            dq[0] = min(dq[0], -0.5)
 
         # if dq[1]> 0:
         #     dq[1] = max(dq[1], 0.15)

@@ -223,10 +223,10 @@ class TaskPublisher:
         start_time = rospy.Time.now()
         # Change goal to current task
         x,y,z,roll,pitch,yaw = self.extract_pose(goal.goal.pose)
-        self.current_task = ["ConfigurationTask"]
-        # self.current_task = ["PositionTask"]
-        self.current_desired = [x, y, z, roll, pitch, yaw]
-        # self.current_desired = [x, y, z]
+        # self.current_task = ["ConfigurationTask"]
+        self.current_task = ["PositionTask"]
+        # self.current_desired = [x, y, z, roll, pitch, yaw]
+        self.current_desired = [x, y, z]
         print(self.current_desired)
         self.current_joint = [0]
 
@@ -235,8 +235,8 @@ class TaskPublisher:
         success = True
 
         # Keep checking the progress
-        while not np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)) < 0.02 and not rospy.is_shutdown():
-            print("configuration goal dist: ", np.linalg.norm(np.array(self.ee_pose) - np.array(self.current_desired)))
+        while not np.linalg.norm(np.array(self.ee_pose[:len(self.current_desired)]) - np.array(self.current_desired)) < 0.02 and not rospy.is_shutdown():
+            print("configuration goal dist: ", np.linalg.norm(np.array(self.ee_pose[:len(self.current_desired)]) - np.array(self.current_desired)))
 
             if self.move_turtlebot_server.is_preempt_requested() :
                 rospy.logerr('Preemptted!!')
@@ -327,7 +327,7 @@ class TaskPublisher:
                 success = False
                 break
 
-            if rospy.Time.now() - start_time > rospy.Duration(10):
+            if rospy.Time.now() - start_time > rospy.Duration(30):
                 rospy.logerr('Time Exceed!!')
                 self.move_swiftpro_server.set_preempted()
                 self.active = False

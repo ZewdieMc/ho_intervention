@@ -115,7 +115,7 @@ class SwiftProManipulator:
         static_transformStamped.transform.translation.y = 0.0
         static_transformStamped.transform.translation.z = 0.0
 
-        yaw = 0#!yaw = -np.pi
+        yaw =  -np.pi#!yaw = -np.pi
         q = quaternion_from_euler(0,0,yaw)
         static_transformStamped.transform.rotation.x = q[0]
         static_transformStamped.transform.rotation.y = q[1]

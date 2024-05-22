@@ -115,6 +115,8 @@ class TPController:
         dq_msg = Float64MultiArray()
         dq_msg.data = list(dq[2:].flatten())
         # dq_msg.data[0] = -dq_msg.data[0]
+        # dq_msg.data[1] = -dq_msg.data[1]
+
         self.joint_vel_pub.publish(dq_msg)
 
         cmd = Twist()
@@ -218,7 +220,7 @@ if __name__ == '__main__':
     rospy.init_node('tp_controller')
     TP = TaskPriority(
             [
-                JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([np.pi/2, 3*np.pi/2]), 0),
+                JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2-0.1, np.pi/2]), 0),
                 JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2, 0.05]), 1),
                 JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2, 0.05]), 2),
                 JointLimitTask("Joint limit", np.array([0.03, 0.05]), np.array([-np.pi/2, np.pi/2]), 3),
