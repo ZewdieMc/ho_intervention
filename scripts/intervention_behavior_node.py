@@ -299,8 +299,8 @@ class moveTurtlebotAruco (py_trees.behaviour.Behaviour):
             # self.picking_goal.pose.orientation.w = q[3]
             # self.blackboard.picking_goal = self.picking_goal
             
-            if self.name == "move_down":
-                print("move_down" )
+            if self.name == "move_pick":
+                print("move_pick" )
                 goal = MoveToGoalActionGoal()
                 goal.goal = self.blackboard.picking_goal
             elif self.name == "move_up":
@@ -409,7 +409,7 @@ class moveSwiftpro (py_trees.behaviour.Behaviour):
         if self.client.get_state() == actionlib.GoalStatus.PENDING or self.client.get_state() == actionlib.GoalStatus.LOST:
             rospy.loginfo('Send goal to swiftpro')
             goal = MoveToGoalActionGoal()
-            goal.goal = self.blackboard.picking_goal if self.name == "move_down" else self.blackboard.platform_goal
+            goal.goal = self.blackboard.picking_goal if self.name == "move_pick" else self.blackboard.platform_goal
             self.client.send_goal(goal)
             self.goal_sent = True
         if self.client.get_state() == actionlib.GoalStatus.PREEMPTED :
@@ -531,7 +531,7 @@ class PlaceBox (py_trees.behaviour.Behaviour):
                 goal.joint = [0, 1, 2 ]
                 # goal.position =  [np.pi/2, 0.05,-0.1]#! realrobot [-np.pi/2, -0.4,-0.1] #! in real robot, it's -np.pi/2
                 goal.position =  [-np.pi/2, -0.4,-0.1]
-            elif self.name == "move_to_place_box":
+            elif self.name == "place_box" or "contract_arm":
                 rospy.loginfo('Send goal to place box')
                 goal.joint = [2,0,1]
                 goal.position =  [0.0,np.pi/2, 0.0]
@@ -559,25 +559,27 @@ def handle_start_pickup(req):
     align_EE = PlaceBox("align_EE")                     #joint1 position
     set_goal = setGoalPickUp("set_goal")                      #set bb variables to different tasks
     move_base = moveBase("move_base")                   #move closer to the aruco box
+    move_base_drop = moveBase("move_base_drop")                   #move closer to the aruco box
+
     # move_offset = moveTurtlebot("move_offset")
-    # move_down = moveSwiftpro("move_down")
-    move_down = moveTurtlebotAruco("move_down")         #move to picking position...config task
+    # move_pick = moveSwiftpro("move_pick")
+    move_pick = moveTurtlebotAruco("move_pick")         #move to picking position...config task
     enable_suction = EnableSuction("grab_box")          #enable suction
     move_up = moveTurtlebotAruco("move_up")                  #move up after picking   ...config task
-    move_place_box = PlaceBox("move_to_place_box")      #move to placing position...joint1 for now
-    move_place_box2 = PlaceBox("move_to_place_box")      #move to placing position...joint1 for now
+    place_box = PlaceBox("place_box")      #move to placing position...joint1 for now
+    contract_arm = PlaceBox("contract_arm")      #move to placing position...joint1 for now
 
-    disable_suction = DisableSuction("place_box")             #disable suction
+    disable_suction = DisableSuction("disable_suction")             #disable suction
     move_drop = moveBase("move_drop")
-    move_drop_box = PlaceBox("dropping")      #move to placing position...joint1 for now
+    align_drop = PlaceBox("align_drop")      #move to placing position...joint1 for now
 
     drop = moveTurtlebotAruco("move_drop")
 
     # go to pickup spot sequence
     pick_up_seq = py_trees.composites.Sequence(name="pick_seq", memory=True)
-    # pick_up_seq.add_children([set_goal,align_EE, move_base,move_down, enable_suction,move_up, move_place_box, place_box])
+    # pick_up_seq.add_children([set_goal,align_EE, move_base,move_pick, enable_suction,move_up, move_place_box, place_box])
     # pick_up_seq.add_children([set_goal,align_EE])
-    pick_up_seq.add_children([set_goal,align_EE, move_down,enable_suction,move_up,move_place_box,move_drop_box,drop,disable_suction,move_place_box2])
+    pick_up_seq.add_children([set_goal,align_EE,move_base, move_pick,enable_suction,move_up,place_box,move_base_drop,align_drop,move_drop,disable_suction,contract_arm])
 
     print("Call setup for all tree children")
     py_trees.display.render_dot_tree(pick_up_seq)
@@ -608,11 +610,11 @@ def handle_start_placedown(req):
     set_goal = setGoalPlaceDown("set_goal")                      #set bb variables to different tasks
     move_base = moveBase("move_base")                   #move closer to the aruco box
     # move_offset = moveTurtlebot("move_offset")
-    # move_down = moveSwiftpro("move_down")
-    move_down = moveTurtlebotAruco("move_down")         #move to picking position...config task
+    # move_pick = moveSwiftpro("move_pick")
+    move_pick = moveTurtlebotAruco("move_pick")         #move to picking position...config task
     enable_suction = EnableSuction("grab_box")          #enable suction
     move_up = moveTurtlebotAruco("move_up")                  #move up after picking   ...config task
-    move_place_box = PlaceBox("move_to_place_box")      #move to placing position...joint1 for now
+    move_place_box = PlaceBox("place_box")      #move to placing position...joint1 for now
     disable_suction = DisableSuction("place_box")             #disable suction
     move_drop = moveBase("move_drop")
     move_drop_box = PlaceBox("dropping")      #move to placing position...joint1 for now
@@ -621,7 +623,7 @@ def handle_start_placedown(req):
 
     # go to pickup spot sequence
     place_down_seq = py_trees.composites.Sequence(name="pick_seq", memory=True)
-    # place_down_seq.add_children([set_goal,align_EE, move_base,move_down, enable_suction,move_up, move_place_box, place_box])
+    # place_down_seq.add_children([set_goal,align_EE, move_base,move_pick, enable_suction,move_up, move_place_box, place_box])
     # place_down_seq.add_children([set_goal,align_EE])
     place_down_seq.add_children([move_drop_box,drop,disable_suction,move_place_box])
 
