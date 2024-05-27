@@ -33,13 +33,13 @@ class ArucoPose:
         self.dist_coeffs = None
 
         # aruco dictionary name
-        self.dict_name = 'DICT_ARUCO_ORIGINAL' #!'DICT_4X4_100'
+        self.dict_name = 'DICT_4X4_100'
 
         # aruco dictionary
         self.dictionary = self.getDictionary(self.dict_name)
 
         # marker size
-        self.marker_size = 0.05
+        self.marker_size = 0.056
 
         # bridge object
         self.bridge = CvBridge()
@@ -55,7 +55,7 @@ class ArucoPose:
 
         # SUBSCRIBERS
         # subscribe to the camera image
-        self.image_sub = rospy.Subscriber('/turtlebot/kobuki/realsense/color/image_color', Image, self.image_callback, queue_size=1)
+        self.image_sub = rospy.Subscriber('/turtlebot/kobuki/realsense/color/image_raw', Image, self.image_callback, queue_size=1)
         # subscribe to the camera info
         self.camera_info_sub = rospy.Subscriber('/turtlebot/kobuki/realsense/color/camera_info', CameraInfo, self.info_callback, queue_size=1)
 
@@ -88,7 +88,7 @@ class ArucoPose:
         cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         # print("image shape: ", cv_image)
 
-        self.camera_frame_id = msg.header.frame_id#"realsense_color_optical_frame"#msg.header.frame_id
+        self.camera_frame_id = "realsense_color_optical_frame"#msg.header.frame_id
         # Detect the aruco markers
         self.estimateArucoPose(cv_image)
 
@@ -161,7 +161,7 @@ class ArucoPose:
             # print("rvecs: ", rvecs.shape)
 
             # cv2.aruco.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i], tvecs[i], 0.1)
-            self.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[0], tvecs[0], 0.1)
+            # self.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[0], tvecs[0], 0.1)
 
             # Convert tvecs to translation vector
             tc = tvecs[0].reshape(-1, 1)
@@ -192,8 +192,8 @@ class ArucoPose:
             offset.header.stamp = rospy.Time.now()#! check
             offset.header.frame_id = "aruco"#! check
             offset.pose.position.x = 0
-            offset.pose.position.y = 0.076
-            offset.pose.position.z = -0.035
+            offset.pose.position.y = 0.064
+            offset.pose.position.z = -0.1
             
             # picking pose of aruco marker in camera frame
             offset_in_camera = do_transform_pose(offset, aruco_transform)
@@ -218,44 +218,6 @@ class ArucoPose:
             rospy.loginfo('Aruco pose in the world frame: {}'.format(aruco_pose_world.pose.position))
         else:
             rospy.loginfo('No aruco...')
-
-    def transform_arcuo_pose(self, tc):
-        """
-        Transform the aruco pose to the world frame
-        """
-        r = self.eta
-        wTr = np.array(
-            [[cos(r[2,0]), -sin(r[2,0]), 0, r[0,0]], 
-             [sin(r[2,0]), cos(r[2,0]), 0, r[1,0]] , 
-             [0, 0, 1, 0], 
-             [0, 0, 0, 1]])
-        # Robot_base-to-camera transformationy
-        rTc = np.array(
-                [[0.0, 0.0, 1.0, 0.136],
-                 [1.0, 0.0, 0.0, -0.033],
-                 [0.0, 1.0, 0.0, -0.116],
-                 [0.0, 0.0, 0.0, 1.0]])
-        
-        wTc = wTr @ rTc
-
-        wc = wTc @ np.vstack([tc, 1])
-
-        return wc[:3]
-
-    def drawAxis(self, image, camera_matrix, dist_coeffs, rvec, tvec, length):
-        # Define the 3D points of the axes
-        axis_points = np.float32([[0,0,0], [length,0,0], [0,length,0], [0,0,length]]).reshape(-1,3)
-
-        # Project the 3D points to image plane
-        img_points, _ = cv2.projectPoints(axis_points, rvec, tvec, camera_matrix, dist_coeffs)
-
-        # Convert image points to integer
-        img_points = np.int32(img_points).reshape(-1, 2)
-
-        # Draw axes lines on the image
-        # The coordinate system: x-axis (red), y-axis (green), z-axis (blue)
-        cv2.drawFrameAxes(image, camera_matrix, dist_coeffs, rvec, tvec, length)
-
 
     
 
