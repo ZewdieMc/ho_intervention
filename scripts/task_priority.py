@@ -9,6 +9,8 @@ class TaskPriority:
     def __init__(self, tasks) -> None:
         self.tasks = tasks
         self.sigmad_pub = rospy.Publisher('sigmad_marker', Marker, queue_size=10)
+        self.error_pub = rospy.Publisher('tp_error', Float64MultiArray, queue_size=10)
+
         self.joint_vel_limits = np.array([0.2, 0.5, 0.2, 0.2, 0.2, 0.2]).reshape(-1,1)
     def recursive_tp(self, robot):
         print("number of tasks: ", len(self.tasks))
@@ -43,6 +45,11 @@ class TaskPriority:
                 print("error: ", task.getError().shape)
                 xi_bar = task.getGain()*0.7 @ task.getError()
                 print("error {} ".format(task.name), task.getError())
+                if task.name == "Position":
+                    msg = Float64MultiArray()
+                    msg.data = list(task.getError().flatten())
+                    
+                    self.error_pub.publish(msg)
 
                 dq_i = DLS(Ji_q, 0.1 , W) @ (xi_bar - J @ dq)
                 print("dq_i: ", dq_i.shape)

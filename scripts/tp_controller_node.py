@@ -63,6 +63,7 @@ class TPController:
         self.goal_sub = rospy.Subscriber("/goal", PoseStamped, self.stop_arm)
 
         rospy.Timer(rospy.Duration(0.1), self.ee_publish)
+
         
 
     def simple_control_loop(self, sigma_d): 
@@ -124,7 +125,8 @@ class TPController:
         cmd.angular.z = dq[0]
         # cmd.linear.x = min(max(dq[1], -0.5), 0.5)
         # cmd.angular.z = min(max(dq[0], -0.3), 0.3)
-        self.base_cmd_vel_pub.publish(cmd)
+        if len(msg.tasks) > 0:
+            self.base_cmd_vel_pub.publish(cmd)
 
         # ee_pose = self.robot.getEEPose()
         # self.publishEEpose(ee_pose)
@@ -214,6 +216,9 @@ class TPController:
     def ee_publish(self, event):
         ee_pose = self.robot.getEEPose()
         self.publishEEpose(ee_pose)
+
+
+
 
 if __name__ == '__main__':
 

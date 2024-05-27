@@ -161,7 +161,7 @@ class TaskPublisher:
 
         # Timer
         rospy.Timer(rospy.Duration(self.control_interval), self.task_publish_loop)
-        rospy.sleep(5)
+        rospy.sleep(3)
 
         # For testing 
         # rospy.Timer(rospy.Duration(10), self.test_loop)
@@ -365,12 +365,11 @@ class TaskPublisher:
 
         # Keep checking the progress
         while  not rospy.is_shutdown():
-            # print(self.q)
             joint_err = []
             for i in range(len(goal.joint)):
                 err = np.linalg.norm(np.array(self.q[goal.joint[i]]) - np.array(goal.position[i]))
-                joint_err.append(err < 0.2)
-
+                joint_err.append(err < 0.5)
+            print(joint_err)
             if all(joint_err):
                 self.success = True
                 break
